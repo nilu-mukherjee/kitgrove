@@ -116,6 +116,24 @@ describe('built CLI: create collection', () => {
   })
 })
 
+describe('built CLI: access', () => {
+  it('sets and shows rules, and generate --access writes them', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
+    paycms(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
+    const root = join(cwd, 'site')
+    expect(paycms(root, 'generate', 'collection', 'Notes', '--access', 'read=public,delete=tenant-admin').code).toBe(0)
+    expect(paycms(root, 'access', 'set', 'notes', '--update', 'tenant-editor').code).toBe(0)
+    const shown = paycms(root, 'access', 'show', 'notes')
+    expect(shown.code, shown.err).toBe(0)
+    expect(shown.out).toMatch(/read\s+public/)
+    expect(shown.out).toMatch(/update\s+tenant-editor/)
+    expect(shown.out).toMatch(/delete\s+tenant-admin/)
+    const bad = paycms(root, 'access', 'set', 'notes', '--read', 'nope')
+    expect(bad.code).toBe(1)
+    expect(bad.err).toMatch(/Unknown access rule "nope"/)
+  })
+})
+
 describe('built CLI: outside a project', () => {
   it.each([['tenant', 'list'], ['doctor'], ['dev'], ['generate', 'collection', 'x']])('%s fails clearly', (...args) => {
     const r = paycms(mkdtempSync(join(tmpdir(), 'paycms-none-')), ...args)

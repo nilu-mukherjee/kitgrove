@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -138,6 +138,76 @@ describe('generate with fields', () => {
     await expect(
       runGenerate(kind, 'thing', { cwd: root, fields: parseFieldSpecs('a:text') }),
     ).rejects.toThrow(/--fields/)
+  })
+})
+
+describe('generate with access rules', () => {
+  const DEFAULT_NOTES = `import type { CollectionConfig } from 'payload'
+
+import { tenantScoped } from '../access/tenantScoped'
+
+export const Notes: CollectionConfig = {
+  slug: 'notes',
+  access: {
+    read: tenantScoped,
+  },
+  admin: {
+    useAsTitle: 'title',
+  },
+  fields: [
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+    },
+  ],
+}
+`
+
+  it('keeps the historical output byte-identical when no access is given', async () => {
+    const root = await project()
+    await runGenerate('collection', 'notes', { cwd: root })
+    expect(read(root, 'src/collections/Notes.ts')).toBe(DEFAULT_NOTES)
+  })
+
+  it('writes only the requested operations and their imports', async () => {
+    const root = await project()
+    await runGenerate('collection', 'notes', {
+      cwd: root,
+      access: { read: 'public', update: 'tenant-editor', delete: 'tenant-admin' },
+    })
+    const file = read(root, 'src/collections/Notes.ts')
+    expect(file).toContain('read: () => true,')
+    expect(file).toContain('update: tenantEditorOrAdmin,')
+    expect(file).toContain('delete: tenantAdminOnly,')
+    expect(file).not.toContain('create:')
+    expect(file).not.toContain('tenantScoped')
+    expect(file).toContain(`import { tenantAdminOnly } from '../access/tenantAdminOnly'`)
+    expect(file).toContain(`import { tenantEditorOrAdmin } from '../access/tenantEditorOrAdmin'`)
+  })
+
+  it('creates the helper files a project is missing', async () => {
+    const root = await project()
+    rmSync(join(root, 'src/access/tenantEditorOrAdmin.ts'))
+    const result = await runGenerate('collection', 'notes', { cwd: root, access: { update: 'tenant-editor' } })
+    expect(result.files).toContain('src/access/tenantEditorOrAdmin.ts')
+    expect(existsSync(join(root, 'src/access/tenantEditorOrAdmin.ts'))).toBe(true)
+  })
+
+  it('applies to --global-shared collections and per-tenant globals', async () => {
+    const root = await project()
+    await runGenerate('collection', 'notes', { cwd: root, globalShared: true, access: { read: 'authenticated' } })
+    expect(read(root, 'src/collections/Notes.ts')).toContain('read: ({ req }) => Boolean(req.user),')
+    await runGenerate('global', 'Settings', { cwd: root, access: { update: 'super-admin' } })
+    expect(read(root, 'src/collections/Settings.ts')).toContain('update: isSuperAdmin,')
+  })
+
+  it('rejects access for kinds that have no collection access', async () => {
+    const root = await project()
+    await expect(runGenerate('block', 'Hero', { cwd: root, access: { read: 'public' } })).rejects.toThrow(/--access/)
+    await expect(
+      runGenerate('global', 'Brand', { cwd: root, globalShared: true, access: { read: 'public' } }),
+    ).rejects.toThrow(/--access/)
   })
 })
 

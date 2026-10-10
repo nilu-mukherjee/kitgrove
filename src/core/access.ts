@@ -178,6 +178,11 @@ export function setAccess(
         if (prop.getInitializer()?.getText() !== expr) prop.setInitializer(expr)
       } else prop.replaceWithText(`${op}: ${expr}`)
     }
+    // ts-morph leaves the last property without a trailing comma; generated files always have one.
+    const last = access.getProperties().at(-1)
+    if (last && access.getText().includes('\n') && sf.getFullText()[last.getEnd()] !== ',') {
+      sf.insertText(last.getEnd(), ',')
+    }
   }
 
   const imported = new Set(sf.getImportDeclarations().flatMap((i) => i.getNamedImports().map((n) => n.getName())))

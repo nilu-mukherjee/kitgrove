@@ -1,6 +1,14 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import type { Command } from 'commander'
+import {
+  type AccessRules,
+  ACCESS_OPS,
+  ACCESS_RULES,
+  ensureAccessHelpers,
+  parseAccessFlag,
+  renderAccessBlock,
+} from '../core/access.js'
 import { registerInConfig } from '../core/codemod.js'
 import { CliError } from '../core/errors.js'
 import * as p from '@clack/prompts'
@@ -33,6 +41,8 @@ export interface GenerateOptions {
   fields?: FieldSpec[]
   /** Field shown as the document title in the admin. Must be a top-level field, `id`, or the default `title`. */
   useAsTitle?: string
+  /** Access rules for collections and per-tenant globals; omit for the default (`read: tenantScoped`). */
+  access?: AccessRules
 }
 
 export interface GenerateResult {
@@ -114,6 +124,14 @@ export async function runGenerate(
       throw new CliError(`A collection or global with slug "${slug}" already exists.`)
     }
   }
+  const rules = opts.access ?? {}
+  const hasRules = ACCESS_OPS.some((op) => rules[op])
+  if (hasRules && !isCollectionLike) {
+    throw new CliError(`--access only applies to collections and per-tenant globals, not ${isSharedGlobal ? 'shared globals' : `${kind}s`}.`)
+  }
+  const effectiveRules: AccessRules = hasRules ? rules : tenantScoped ? { read: 'tenant-scoped' } : {}
+  const { block: accessBlock, imports: accessImports } = renderAccessBlock(effectiveRules)
+
   const hasFields = kind === 'collection' || kind === 'global' || kind === 'block'
   const fields = opts.fields ?? []
   if (fields.length > 0 && !hasFields) {
@@ -159,6 +177,9 @@ export async function runGenerate(
     slug,
     tenantScoped,
     isGlobal,
+    accessBlock,
+    accessImports,
+    hasAccessImports: accessImports !== '',
     imports,
     titleField: opts.useAsTitle ?? pickTitleField(fields),
     fields: renderFields(
@@ -170,8 +191,10 @@ export async function runGenerate(
 
   mkdirSync(outDir, { recursive: true })
   writeFileSync(target, content)
+  const helpers = hasRules ? ensureAccessHelpers(srcDir, rules).map((f) => relative(project.root, join(srcDir, f))) : []
 
   if (kind !== 'collection' && kind !== 'global') return { files: [rel], registered: false }
+  const files = [rel, ...helpers]
 
   const result = registerInConfig(project.configPath, {
     kind: isSharedGlobal ? 'global' : 'collection',
@@ -182,8 +205,8 @@ export async function runGenerate(
     isGlobal,
   })
   return result.ok
-    ? { files: [rel], registered: true }
-    : { files: [rel], registered: false, manualInstructions: result.manualInstructions }
+    ? { files, registered: true }
+    : { files, registered: false, manualInstructions: result.manualInstructions }
 }
 
 export interface GenerateFlags {
@@ -192,6 +215,7 @@ export interface GenerateFlags {
   dryRun?: boolean
   fields?: string
   useAsTitle?: boolean | string
+  access?: string
   yes?: boolean
 }
 
@@ -217,6 +241,7 @@ export async function handleGenerate(kind: string, nameArg: string | undefined, 
   const takesFields = ['collection', 'global', 'block'].includes(kind)
   const hasTitle = kind === 'collection' || (kind === 'global' && !o.globalShared)
   let fields = o.fields ? parseFieldSpecs(o.fields) : []
+  let access: AccessRules | undefined = o.access ? parseAccessFlag(o.access) : undefined
   let useAsTitle = typeof o.useAsTitle === 'string' ? o.useAsTitle : undefined
 
   if (takesFields && !o.fields && interactive) {
@@ -240,6 +265,7 @@ export async function handleGenerate(kind: string, nameArg: string | undefined, 
       }
     }
     fields = await promptFields(ctx, null, 0, seed)
+    if (hasTitle && !o.access) access = await promptAccess()
   }
 
   const result = await runGenerate(kind as GenerateKind, name, {
@@ -248,6 +274,7 @@ export async function handleGenerate(kind: string, nameArg: string | undefined, 
     dryRun: o.dryRun,
     fields,
     useAsTitle,
+    access,
     cwd: process.cwd(),
   })
   for (const f of result.files) console.log(`${o.dryRun ? 'Would create' : 'Created'} ${f}`)
@@ -270,6 +297,7 @@ export function registerGenerate(program: Command): void {
     .option('--dry-run', 'show what would be created')
     .option('--fields <spec>', 'fields for collection/global/block, e.g. "title:text![unique],status:select:draft|live[default=draft]"')
     .option('--use-as-title <field>', 'field that names a document in the admin (default: title)')
+    .option('--access <rules>', 'access rules, e.g. read=public,update=tenant-editor')
     .option('-y, --yes', 'do not prompt')
     .action((kind: string, name: string | undefined, o: GenerateFlags) => handleGenerate(kind, name, o))
 }
@@ -508,4 +536,24 @@ async function promptFields(
     }
   }
   return specs
+}
+
+/** Optional per-operation rules for a new collection; returns undefined to keep the default. */
+async function promptAccess(): Promise<AccessRules | undefined> {
+  if (!(await askConfirm('Configure access rules? (default: signed-in users filtered by tenant, public read for open tenants)'))) {
+    return undefined
+  }
+  const rules: AccessRules = {}
+  for (const op of ACCESS_OPS) {
+    const rule = await p.select({
+      message: `Who can ${op}?`,
+      options: [
+        { value: '', label: '(default)' },
+        ...ACCESS_RULES.map((r) => ({ value: r, label: r })),
+      ],
+    })
+    bail(rule)
+    if (rule) rules[op] = String(rule) as AccessRules[typeof op]
+  }
+  return ACCESS_OPS.some((op) => rules[op]) ? rules : undefined
 }

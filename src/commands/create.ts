@@ -119,6 +119,7 @@ export function registerCreate(program: Command): void {
     .option('--dry-run', 'list the files that would be created')
     .option('--fields <spec>', 'fields for collection/global/block, e.g. "title:text![unique]"')
     .option('--use-as-title <field>', 'collection: field that names a document in the admin')
+    .option('--access <rules>', 'collection: access rules, e.g. read=public,update=tenant-editor')
     .option('--global-shared', 'collection/global: not tenant-scoped / a real shared global')
     .option('-f, --force', 'overwrite an existing file')
     .action(async (what: string | undefined, nameArg: string | undefined, o: Record<string, string | boolean | undefined>) => {

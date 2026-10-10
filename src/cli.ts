@@ -1,6 +1,7 @@
 import { readFileSync, realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { Command } from 'commander'
+import { registerAccess } from './commands/access.js'
 import { registerCreate } from './commands/create.js'
 import { registerDoctor } from './commands/doctor.js'
 import { registerGenerate } from './commands/generate.js'
@@ -22,6 +23,7 @@ export function buildProgram(): Command {
   registerCreate(program)
   registerGenerate(program)
   registerTenant(program)
+  registerAccess(program)
   registerWrappers(program)
   registerDoctor(program)
   return program
