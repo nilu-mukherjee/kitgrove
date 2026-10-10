@@ -10,6 +10,7 @@ import { registerTenant } from './commands/tenant.js'
 import { registerUser } from './commands/user.js'
 import { registerWrappers } from './commands/wrappers.js'
 import { CliError } from './core/errors.js'
+import { shouldLaunchTui } from './tui/entry.js'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
   version: string
@@ -28,6 +29,16 @@ export function buildProgram(): Command {
   registerAccess(program)
   registerUser(program)
   registerData(program)
+  program
+    .command('tui')
+    .description('Open the full-screen terminal UI (also: run paycms with no arguments)')
+    .action(async () => {
+      if (!process.stdin.isTTY || !process.stdout.isTTY) {
+        throw new CliError('The TUI needs an interactive terminal.')
+      }
+      const { launchTui } = await import('./tui/index.js')
+      await launchTui()
+    })
   registerWrappers(program)
   registerDoctor(program)
   return program
@@ -42,8 +53,15 @@ function isEntry(): boolean {
 }
 
 if (isEntry()) {
-  buildProgram()
-    .parseAsync(process.argv)
+  const launch = shouldLaunchTui({
+    argv: process.argv.slice(2),
+    stdinIsTTY: Boolean(process.stdin.isTTY),
+    stdoutIsTTY: Boolean(process.stdout.isTTY),
+  })
+  const run = launch
+    ? import('./tui/index.js').then((m) => m.launchTui())
+    : buildProgram().parseAsync(process.argv)
+  run
     .catch((err: unknown) => {
       const verbose = process.argv.includes('--verbose')
       if (err instanceof CliError) console.error(`Error: ${err.message}`)
