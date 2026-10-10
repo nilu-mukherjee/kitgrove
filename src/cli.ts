@@ -1,6 +1,7 @@
 import { readFileSync, realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { Command } from 'commander'
+import { CliError } from './core/errors.js'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
   version: string
@@ -25,5 +26,13 @@ function isEntry(): boolean {
 }
 
 if (isEntry()) {
-  buildProgram().parseAsync(process.argv)
+  buildProgram()
+    .parseAsync(process.argv)
+    .catch((err: unknown) => {
+      const verbose = process.argv.includes('--verbose')
+      if (err instanceof CliError) console.error(`Error: ${err.message}`)
+      else console.error(verbose ? err : `Unexpected error: ${(err as Error)?.message ?? err}`)
+      if (verbose && err instanceof CliError) console.error(err.stack)
+      process.exit(1)
+    })
 }
