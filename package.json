@@ -1,12 +1,32 @@
 {
-  "name": "payload-cli",
-  "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "index.js",
+  "name": "paycms",
+  "version": "0.1.0",
+  "description": "CLI to create and manage multi-tenant Payload CMS projects",
+  "type": "module",
+  "bin": {
+    "paycms": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsup",
+    "test": "vitest run",
+    "test:smoke": "vitest run --config vitest.smoke.config.ts"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.1",
+    "commander": "^15.0.0",
+    "ts-morph": "^28.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
   }
 }
