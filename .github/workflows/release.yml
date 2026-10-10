@@ -1,7 +1,7 @@
 name: Release
 
-# Publishes to npmjs.com (as `kitgrove`) and GitHub Packages (as `@nilu-mukherjee/kitgrove`)
-# when a version tag such as v0.1.1 is pushed.
+# Publishes to npmjs.com (as `kitgrove`, via trusted publishing, no stored token) and to
+# GitHub Packages (as `@nilu-mukherjee/kitgrove`) when a version tag such as v0.1.1 is pushed.
 on:
   push:
     tags: ["v*"]
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # lets npm attach build provenance when the repo is public
+      id-token: write # trusted publishing: npm trusts this workflow's identity, no token is stored
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,19 +43,15 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+      # Trusted publishing needs a recent npm CLI (the one bundled with Node 22 is older).
+      - run: npm install -g npm@latest
       - run: npm ci
       - run: npm run build
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          PRIVATE_REPO: ${{ github.event.repository.private }}
-        run: |
-          # Provenance is only supported for public repositories.
-          if [ "$PRIVATE_REPO" = "false" ]; then
-            npm publish --access public --provenance --ignore-scripts
-          else
-            npm publish --access public --ignore-scripts
-          fi
+        # No token. Configure the trusted publisher once on npmjs.com (package Settings):
+        # user nilu-mukherjee, repository kitgrove, workflow release.yml.
+        # Build provenance is attached automatically when the repository is public.
+        run: npm publish --access public --ignore-scripts
 
   github-packages:
     name: Publish to GitHub Packages

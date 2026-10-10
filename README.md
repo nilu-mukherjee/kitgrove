@@ -226,7 +226,7 @@ git push --follow-tags
 
 | Registry | Package | Needs |
 |---|---|---|
-| npmjs.com | `kitgrove` | repository secret `NPM_TOKEN` (an npm *automation* token) |
+| npmjs.com | `kitgrove` | trusted publishing: no secret, configured once under the package's Settings on npmjs.com (user `nilu-mukherjee`, repo `kitgrove`, workflow `release.yml`) |
 | GitHub Packages | `@nilu-mukherjee/kitgrove` | nothing; uses the workflow's `GITHUB_TOKEN` |
 
 The tag must match the `version` in `package.json`; tests and typecheck run first. Installing from
