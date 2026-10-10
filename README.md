@@ -202,6 +202,25 @@ Layout: `src/commands` (thin command handlers), `src/core` (project detection, t
 ts-morph config codemod, env, Payload loading), `templates/projects` (blank → blog → corporate layers)
 and `templates/snippets` (generator output).
 
+## Releasing
+
+Pushing a version tag publishes to both registries from GitHub Actions
+(`.github/workflows/release.yml`):
+
+```bash
+npm version patch            # or minor / major: bumps package.json and creates the v* tag
+git push --follow-tags
+```
+
+| Registry | Package | Needs |
+|---|---|---|
+| npmjs.com | `kitgrove` | repository secret `NPM_TOKEN` (an npm *automation* token) |
+| GitHub Packages | `@nilu-mukherjee/kitgrove` | nothing; uses the workflow's `GITHUB_TOKEN` |
+
+The tag must match the `version` in `package.json`; tests and typecheck run first. Installing from
+GitHub Packages needs a GitHub token and `@nilu-mukherjee:registry=https://npm.pkg.github.com` in `.npmrc`,
+so most people should use `npm i -g kitgrove`.
+
 ## License
 
 [MIT](LICENSE)
