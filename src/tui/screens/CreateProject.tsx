@@ -18,7 +18,7 @@ import { Select } from '../components/Select.js'
 import { TextInput } from '../components/TextInput.js'
 import { type Nav, useBack } from './index.js'
 
-type Step = 'name' | 'template' | 'db' | 'working' | 'done'
+type Step = 'name' | 'template' | 'db' | 'frontend' | 'working' | 'done'
 
 export function CreateProject({
   nav,
@@ -36,6 +36,7 @@ export function CreateProject({
   const [step, setStep] = useState<Step>('name')
   const [name, setName] = useState('')
   const [template, setTemplate] = useState<TemplateName>('blank')
+  const [db, setDb] = useState<Database>('postgres')
   const [lines, setLines] = useState<string[]>([])
   const [error, setError] = useState<string>()
   const [result, setResult] = useState<{ ok: boolean; message: string }>()
@@ -43,11 +44,11 @@ export function CreateProject({
   useBack(nav, step !== 'name' || true)
   useEffect(() => () => proc.current?.stop(), [])
 
-  const run = async (db: Database) => {
+  const run = async (headless: boolean) => {
     setStep('working')
     const pm = detectPackageManager()
     try {
-      await create({ name, template, db, pm, yes: true, install: false, cwd })
+      await create({ name, template, db, headless, pm, yes: true, install: false, cwd })
     } catch (err) {
       setError(err instanceof CliError ? err.message : String(err))
       return setStep('name')
@@ -105,7 +106,25 @@ export function CreateProject({
       {step === 'db' ? (
         <Box flexDirection="column">
           <Text>Database</Text>
-          <Select items={DATABASES.map((d) => ({ value: d, label: d }))} onSelect={(d) => void run(d)} />
+          <Select
+            items={DATABASES.map((d) => ({ value: d, label: d }))}
+            onSelect={(d) => {
+              setDb(d)
+              setStep('frontend')
+            }}
+          />
+        </Box>
+      ) : null}
+      {step === 'frontend' ? (
+        <Box flexDirection="column">
+          <Text>Frontend</Text>
+          <Select
+            items={[
+              { value: 'demo', label: 'Demo frontend', hint: 'a small Next.js site per tenant' },
+              { value: 'headless', label: 'Headless', hint: 'API only: sites call REST/GraphQL' },
+            ]}
+            onSelect={(v) => void run(v === 'headless')}
+          />
         </Box>
       ) : null}
       {step === 'working' || step === 'done' ? (

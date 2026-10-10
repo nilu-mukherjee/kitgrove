@@ -176,11 +176,17 @@ describe('CreateProject', () => {
     t.stdin.write('j') // mongodb
     await settle()
     t.stdin.write('\r')
+    await until(t.lastFrame, has('Frontend'))
+    await settle()
+    t.stdin.write('j') // headless
+    await settle()
+    t.stdin.write('\r')
     await vi.waitFor(() => expect(create).toHaveBeenCalled())
     expect(create.mock.calls[0]![0]).toMatchObject({
       name: 'my-sites',
       template: 'blog',
       db: 'mongodb',
+      headless: true,
       install: false,
       cwd: '/work',
     })

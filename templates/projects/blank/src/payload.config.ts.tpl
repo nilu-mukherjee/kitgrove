@@ -31,7 +31,9 @@ export default buildConfig({
   collections: [Users, Tenants, Media, Pages{{#if blog}}, Posts, Categories{{/if}}{{#if corporate}}, Header, Footer{{/if}}],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
-  typescript: {
+{{#if headless}}  // Origins allowed to call the API from a browser, comma separated.
+  cors: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()) : [],
+{{/if}}  typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
 {{#if postgres}}  db: postgresAdapter({

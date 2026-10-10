@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-import { dirname, join, relative } from 'node:path'
+import { dirname, join, relative, sep } from 'node:path'
 import { CliError } from './errors.js'
 
 export type TemplateVars = Record<string, string | boolean>
@@ -7,6 +7,8 @@ export type TemplateVars = Record<string, string | boolean>
 export interface RenderOptions {
   force?: boolean
   dryRun?: boolean
+  /** Source paths (relative, `/`-separated, before `.tpl` removal) that are skipped entirely. */
+  exclude?: (relativePath: string) => boolean
 }
 
 /** Kebab-case slug from a human or code-style name. Throws CliError if no valid slug results. */
@@ -76,7 +78,9 @@ export function renderTemplateDir(
   vars: TemplateVars,
   opts: RenderOptions = {},
 ): string[] {
-  const plan = walk(srcDir).map((file) => {
+  const plan = walk(srcDir)
+    .filter((file) => !opts.exclude?.(relative(srcDir, file).split(sep).join('/')))
+    .map((file) => {
     const rel = relative(srcDir, file)
     const dir = dirname(rel)
     const target = join(dir === '.' ? '' : dir, destName(rel.split('/').pop()!))

@@ -3,12 +3,14 @@ import type { CollectionConfig } from 'payload'
 import { hasSuperAdminRole, isSuperAdminField } from '../access/isSuperAdmin'
 
 // The `tenants` array (tenant + per-tenant roles) is added by the multi-tenant plugin.
+{{#if headless}}// API keys let each site's server authenticate as its own user, limited to that user's tenants.
+{{/if}}
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: {
     useAsTitle: 'email',
   },
-  auth: true,
+  auth: {{#if headless}}{ useAPIKey: true }{{/if}}{{#if frontend}}true{{/if}},
   fields: [
     {
       name: 'roles',

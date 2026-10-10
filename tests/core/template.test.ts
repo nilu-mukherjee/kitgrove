@@ -83,6 +83,17 @@ describe('renderTemplateDir', () => {
     expect(readFileSync(join(dest, 'b.txt'), 'utf8')).toBe('new-b')
   })
 
+  it('skips excluded files: not written, not returned, and they cannot conflict', () => {
+    const src = makeSrc({ 'keep.txt': 'k', 'app/skip.txt.tpl': 's', 'app/also/skip2.txt': 's2' })
+    const dest = tmp('paycms-dest-')
+    mkdirSync(join(dest, 'app'), { recursive: true })
+    writeFileSync(join(dest, 'app', 'skip.txt'), 'existing')
+    const written = renderTemplateDir(src, dest, {}, { exclude: (rel) => rel.startsWith('app/') })
+    expect(written).toEqual(['keep.txt'])
+    expect(readFileSync(join(dest, 'app', 'skip.txt'), 'utf8')).toBe('existing')
+    expect(existsSync(join(dest, 'app', 'also'))).toBe(false)
+  })
+
   it('dryRun writes nothing but returns the paths', () => {
     const src = makeSrc({ 'a/b.txt': 'x' })
     const dest = tmp('kitgrove-dest-')

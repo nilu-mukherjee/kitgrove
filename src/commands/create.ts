@@ -26,6 +26,10 @@ const CHAIN: Record<TemplateName, string[]> = {
   corporate: ['blank', 'blog', 'corporate'],
 }
 
+/** Files that only the demo frontend uses; omitted from headless projects. */
+const FRONTEND_PREFIXES = ['src/app/(frontend)/', 'src/lib/tenant.ts', 'src/lib/currentTenant.ts', 'src/components/']
+const isFrontendFile = (rel: string) => FRONTEND_PREFIXES.some((p) => rel.startsWith(p))
+
 const DB_VARS: Record<Database, Record<string, string | boolean>> = {
   postgres: {
     postgres: true,
@@ -49,6 +53,8 @@ export interface CreateOptions {
   yes?: boolean
   dryRun?: boolean
   install?: boolean
+  /** Backend only: no demo frontend; API keys and CORS are enabled for sites calling the API. */
+  headless?: boolean
   cwd: string
 }
 
@@ -71,6 +77,8 @@ export async function runCreate(opts: CreateOptions): Promise<string[]> {
     payloadVersion: PAYLOAD_VERSION,
     blog: opts.template !== 'blank',
     corporate: opts.template === 'corporate',
+    headless: Boolean(opts.headless),
+    frontend: !opts.headless,
     ...DB_VARS[opts.db],
   }
 
@@ -78,7 +86,11 @@ export async function runCreate(opts: CreateOptions): Promise<string[]> {
   for (const layer of CHAIN[opts.template]) {
     const src = join(templatesDir(), 'projects', layer)
     // Layers only add files; `force` lets a later layer replace a file an earlier one wrote.
-    for (const f of renderTemplateDir(src, target, vars, { dryRun: opts.dryRun, force: written.size > 0 })) {
+    for (const f of renderTemplateDir(src, target, vars, {
+        dryRun: opts.dryRun,
+        force: written.size > 0,
+        exclude: opts.headless ? isFrontendFile : undefined,
+      })) {
       written.add(f)
     }
   }
@@ -116,6 +128,7 @@ export function registerCreate(program: Command): void {
     .option('--pm <pm>', `package manager (${PACKAGE_MANAGERS.join('|')})`)
     .option('-y, --yes', 'accept defaults, no prompts')
     .option('--no-install', 'skip installing dependencies')
+    .option('--headless', 'project: backend only (no demo frontend); enables API keys and CORS')
     .option('--dry-run', 'list the files that would be created')
     .option('--fields <spec>', 'fields for collection/global/block, e.g. "title:text![unique]"')
     .option('--use-as-title <field>', 'collection: field that names a document in the admin')
@@ -175,10 +188,25 @@ async function createProject(name: string, o: Record<string, string | boolean | 
           }),
         )
       : 'postgres')
+  const headless =
+    o.headless !== undefined
+      ? Boolean(o.headless)
+      : interactive
+        ? (ensure(
+            await p.select<boolean>({
+              message: 'Frontend',
+              options: [
+                { value: false, label: 'Demo frontend', hint: 'a small Next.js site per tenant' },
+                { value: true, label: 'Headless', hint: 'API only: sites call REST/GraphQL' },
+              ],
+            }),
+          ) as boolean)
+        : false
   const files = await runCreate({
     name,
     template,
     db,
+    headless,
     pm: (o.pm as PackageManager) ?? detectPackageManager(),
     yes: Boolean(o.yes),
     dryRun: Boolean(o.dryRun),

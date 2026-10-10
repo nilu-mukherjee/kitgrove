@@ -20,7 +20,7 @@ Run `kitgrove` with no arguments for the full-screen terminal UI (see [Terminal 
 
 | Command | What it does |
 |---|---|
-| `kitgrove create <name> [-t blank\|blog\|corporate] [-d postgres\|mongodb] [--pm npm\|pnpm\|yarn]` | Scaffold a project. `--yes` skips prompts, `--no-install` skips installing, `--dry-run` lists files. |
+| `kitgrove create <name> [-t blank\|blog\|corporate] [-d postgres\|mongodb] [--pm npm\|pnpm\|yarn]` | Scaffold a project. `--yes` skips prompts, `--no-install` skips installing, `--dry-run` lists files, `--headless` makes it backend only (see below). |
 | `kitgrove create collection [name]` (same as `kitgrove generate collection`) | New collection, registered in `payload.config.ts`. In a terminal it asks for the name, `useAsTitle`, then each field. Tenant-scoped unless `--global-shared`. `--fields`, `--use-as-title <field>` or `--yes` skip the prompts. |
 | `kitgrove generate global <name> [--fields <spec>] [--global-shared]` | A per-tenant global (one document per tenant). With `--global-shared`, a real Payload global shared by all tenants. |
 | `kitgrove generate block <name> [--fields <spec>]` | A block with the given fields; import it into a `blocks` field. |
@@ -172,6 +172,18 @@ edit, `d` delete, `J`/`K` reorder, `Enter` on a container to open it, `n` name, 
 | `blank` | `tenants`, `users` (roles, per-tenant roles), `media`, tenant-scoped `pages`, a catch-all frontend route |
 | `blog` | `posts`, `categories`, `/blog` and `/blog/[slug]` |
 | `corporate` | Layout blocks (hero, content, call to action, form), per-tenant `header`/`footer`, form builder |
+
+### Headless (backend only)
+
+`kitgrove create my-cms --headless` generates the admin and API with **no demo frontend**, for setups
+where your sites call the REST or GraphQL API. A headless project also:
+
+- turns on **API keys** for users, so each site's server can authenticate as its own user limited to
+  its tenants (`kitgrove user add acme-site@example.com --tenant acme`, then tick *Enable API key*);
+- reads allowed browser origins from **`CORS_ORIGINS`** (comma separated);
+- ships a README with per-tenant REST and GraphQL examples.
+
+Without `--headless` you get a small Next.js demo frontend per tenant. Both include the same collections.
 
 ### How tenancy works
 
