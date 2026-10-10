@@ -4,6 +4,7 @@ import { Command } from 'commander'
 import { registerAccess } from './commands/access.js'
 import { registerCreate } from './commands/create.js'
 import { registerData } from './commands/data.js'
+import { registerHeadless } from './commands/headless.js'
 import { registerDoctor } from './commands/doctor.js'
 import { registerGenerate } from './commands/generate.js'
 import { registerTenant } from './commands/tenant.js'
@@ -29,6 +30,7 @@ export function buildProgram(): Command {
   registerAccess(program)
   registerUser(program)
   registerData(program)
+  registerHeadless(program)
   program
     .command('tui')
     .description('Open the full-screen terminal UI (also: run kitgrove with no arguments)')

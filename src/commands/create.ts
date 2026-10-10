@@ -28,7 +28,7 @@ const CHAIN: Record<TemplateName, string[]> = {
 
 /** Files that only the demo frontend uses; omitted from headless projects. */
 const FRONTEND_PREFIXES = ['src/app/(frontend)/', 'src/lib/tenant.ts', 'src/lib/currentTenant.ts', 'src/components/']
-const isFrontendFile = (rel: string) => FRONTEND_PREFIXES.some((p) => rel.startsWith(p))
+export const isFrontendFile = (rel: string) => FRONTEND_PREFIXES.some((p) => rel.startsWith(p))
 
 const DB_VARS: Record<Database, Record<string, string | boolean>> = {
   postgres: {

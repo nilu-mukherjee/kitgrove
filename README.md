@@ -32,6 +32,7 @@ Run `kitgrove` with no arguments for the full-screen terminal UI (see [Terminal 
 | `kitgrove access set <collection> --read <rule> --update <rule> …` / `kitgrove access show [collection]` | Change or show who can read/create/update/delete a collection. |
 | `kitgrove user list\|add\|roles\|assign\|unassign\|remove\|reset-password` | Users, roles and tenant membership. |
 | `kitgrove data collections\|list\|get\|create\|update\|delete` | Browse and edit documents. |
+| `kitgrove headless [--dry-run] [--force] [--yes]` | Convert an existing project to backend only (see Headless below). |
 | `kitgrove tui` | The terminal UI (same as running `kitgrove` with no arguments in a terminal). |
 | `kitgrove doctor` | Diagnose the current project. |
 
@@ -184,6 +185,19 @@ where your sites call the REST or GraphQL API. A headless project also:
 - ships a README with per-tenant REST and GraphQL examples.
 
 Without `--headless` you get a small Next.js demo frontend per tenant. Both include the same collections.
+
+**Already have a project?** Convert it in place:
+
+```bash
+kitgrove headless --dry-run     # shows exactly what would change
+kitgrove headless --yes         # applies it
+```
+
+It removes only the demo-frontend files that are still exactly as generated (files you changed, or added
+yourself, are kept and listed; `--force` removes the changed ones), sets `auth: { useAPIKey: true }` on
+your users collection, adds the `cors` option, and documents `CORS_ORIGINS` in `.env.example`. Your `.env`
+is never touched. Running it twice changes nothing, and anything it cannot edit safely is printed with
+the exact line to add.
 
 ### How tenancy works
 

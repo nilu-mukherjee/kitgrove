@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { readFileSync, mkdtempSync } from 'node:fs'
+import { existsSync, readFileSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ts } from 'ts-morph'
@@ -158,6 +158,45 @@ describe('built CLI: TUI in a real terminal', () => {
   it('restores the terminal and exits 0 on Ctrl+C from Home', () => {
     const r = pty(scaffold(), 'ctrl-c')
     expect(r).toMatchObject({ enter: true, leave: true, code: 0 })
+  })
+})
+
+describe('built CLI: headless', () => {
+  const scaffold = () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
+    kitgrove(cwd, 'create', 'site', '-t', 'blog', '-d', 'postgres', '--yes', '--no-install')
+    return join(cwd, 'site')
+  }
+
+  it('create --headless leaves out the frontend', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
+    const r = kitgrove(cwd, 'create', 'api', '-t', 'blog', '-d', 'postgres', '--headless', '--yes', '--no-install')
+    expect(r.code, r.err).toBe(0)
+    expect(existsSync(join(cwd, 'api/src/app/(frontend)'))).toBe(false)
+    expect(readFileSync(join(cwd, 'api/src/collections/Users.ts'), 'utf8')).toContain('useAPIKey: true')
+  })
+
+  it('headless --dry-run changes nothing; --yes converts; a second run is a no-op', () => {
+    const root = scaffold()
+    const dry = kitgrove(root, 'headless', '--dry-run')
+    expect(dry.code, dry.err).toBe(0)
+    expect(dry.out).toMatch(/Would remove\s+src\/lib\/tenant\.ts/)
+    expect(existsSync(join(root, 'src/lib/tenant.ts'))).toBe(true)
+
+    const run = kitgrove(root, 'headless', '--yes')
+    expect(run.code, run.err).toBe(0)
+    expect(existsSync(join(root, 'src/lib/tenant.ts'))).toBe(false)
+    expect(readFileSync(join(root, 'src/payload.config.ts'), 'utf8')).toContain('CORS_ORIGINS')
+
+    expect(kitgrove(root, 'headless', '--yes').out).toMatch(/already headless/)
+  })
+
+  it('refuses to change files without --yes when there is no terminal', () => {
+    const root = scaffold()
+    const r = kitgrove(root, 'headless')
+    expect(r.code).toBe(1)
+    expect(r.err).toMatch(/pass --yes/)
+    expect(existsSync(join(root, 'src/lib/tenant.ts'))).toBe(true)
   })
 })
 
