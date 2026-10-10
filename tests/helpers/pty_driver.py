@@ -58,6 +58,19 @@ def quiet(quiet_for=0.7, max_wait=25.0):
             return
 
 
+def wait_text(text, max_wait=60.0):
+    """Waits for `text` that has not been on screen before, then lets the screen settle.
+
+    Use for the first appearance of a screen; `quiet` is only right for keys that produce no new text.
+    """
+    needle = text.encode()
+    end = time.time() + max_wait
+    while time.time() < end and needle not in log:
+        read_for(0.1)
+    quiet(0.5)
+    return needle in log
+
+
 def send(keys, settle=True):
     os.write(fd, keys)
     if settle:
@@ -67,16 +80,15 @@ def send(keys, settle=True):
 DOWN, ESC = b'\x1b[B', b'\x1b'
 ok = {}
 
-quiet(1.0, 40.0)  # startup: Node boot, module load, first render
-ok['home'] = b'New collection' in log
+ok['home'] = wait_text('New collection')  # startup: Node boot, module load, first render
 if scenario == 'navigate':
-    send(b'\r')  # Collections
-    ok['collections'] = b'TENANT-SCOPED' in log
+    send(b'\r', settle=False)  # Collections
+    ok['collections'] = wait_text('TENANT-SCOPED')
     send(ESC)
     for _ in range(7):  # Collections, New collection, Tenants, Users, Access, Data, Run -> Doctor
         send(DOWN)
-    send(b'\r')
-    ok['doctor'] = b'dependencies installed' in log
+    send(b'\r', settle=False)
+    ok['doctor'] = wait_text('dependencies installed')
     send(ESC)
     send(b'q', settle=False)
 else:
