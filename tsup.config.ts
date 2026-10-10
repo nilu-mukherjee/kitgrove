@@ -5,5 +5,8 @@ export default defineConfig({
   format: ['esm'],
   target: 'node20',
   clean: true,
+  esbuildOptions(options) {
+    options.jsx = 'automatic'
+  },
   banner: { js: '#!/usr/bin/env node' },
 })

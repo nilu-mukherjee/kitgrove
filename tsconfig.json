@@ -8,7 +8,8 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "outDir": "dist",
-    "types": ["node"]
+    "types": ["node"],
+    "jsx": "react-jsx"
   },
   "include": ["src", "tests", "*.config.ts"],
   "exclude": ["templates", "node_modules", "dist"]
