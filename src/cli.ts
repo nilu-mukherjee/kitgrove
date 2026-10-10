@@ -1,6 +1,7 @@
 import { readFileSync, realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { Command } from 'commander'
+import { registerCreate } from './commands/create.js'
 import { CliError } from './core/errors.js'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
@@ -14,6 +15,7 @@ export function buildProgram(): Command {
     .description('Create and manage multi-tenant Payload CMS projects')
     .version(pkg.version)
     .option('--verbose', 'show stack traces on errors')
+  registerCreate(program)
   return program
 }
 
