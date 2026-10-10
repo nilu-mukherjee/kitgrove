@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { Command } from 'commander'
 import { registerCreate } from './commands/create.js'
 import { registerGenerate } from './commands/generate.js'
+import { registerTenant } from './commands/tenant.js'
 import { CliError } from './core/errors.js'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
@@ -18,6 +19,7 @@ export function buildProgram(): Command {
     .option('--verbose', 'show stack traces on errors')
   registerCreate(program)
   registerGenerate(program)
+  registerTenant(program)
   return program
 }
 
