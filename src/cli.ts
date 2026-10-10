@@ -6,6 +6,7 @@ import { registerCreate } from './commands/create.js'
 import { registerDoctor } from './commands/doctor.js'
 import { registerGenerate } from './commands/generate.js'
 import { registerTenant } from './commands/tenant.js'
+import { registerUser } from './commands/user.js'
 import { registerWrappers } from './commands/wrappers.js'
 import { CliError } from './core/errors.js'
 
@@ -24,6 +25,7 @@ export function buildProgram(): Command {
   registerGenerate(program)
   registerTenant(program)
   registerAccess(program)
+  registerUser(program)
   registerWrappers(program)
   registerDoctor(program)
   return program
