@@ -92,6 +92,66 @@ function slugExists(srcDir: string, slug: string, ignore: string): boolean {
   })
 }
 
+function derive(kind: GenerateKind, globalShared?: boolean) {
+  // A shared global is a real Payload global; everything else is generated as a collection.
+  const isSharedGlobal = kind === 'global' && Boolean(globalShared)
+  const isCollectionLike = kind === 'collection' || (kind === 'global' && !isSharedGlobal)
+  return {
+    isSharedGlobal,
+    isCollectionLike,
+    tenantScoped: isCollectionLike && !globalShared,
+    isGlobal: kind === 'global' && !isSharedGlobal,
+  }
+}
+
+export interface RenderInput {
+  kind: GenerateKind
+  name: string
+  fields?: FieldSpec[]
+  useAsTitle?: string
+  access?: AccessRules
+  globalShared?: boolean
+}
+
+/** The source `generate` writes for a name, kind and options. Pure apart from reading the snippet. */
+export function renderGenerated(i: RenderInput): { content: string; imports: string } {
+  const slug = toSlug(i.name)
+  const Name = toPascal(slug)
+  const d = derive(i.kind, i.globalShared)
+  const fields = i.fields ?? []
+  const rules = i.access ?? {}
+  const hasRules = ACCESS_OPS.some((op) => rules[op])
+  const effective: AccessRules = hasRules ? rules : d.tenantScoped ? { read: 'tenant-scoped' } : {}
+  const { block: accessBlock, imports: accessImports } = renderAccessBlock(effective)
+
+  // Blocks generated into src/blocks sit next to each other; everything else is one level deeper.
+  const blockBase = i.kind === 'block' ? '.' : '../blocks'
+  const imports = collectBlocks(fields)
+    .map((b) => `import { ${toPascal(b)} } from '${blockBase}/${toPascal(b)}'\n`)
+    .join('')
+
+  const snippet = d.isSharedGlobal ? 'global' : d.isCollectionLike ? 'collection' : i.kind
+  const source = readFileSync(join(templatesDir(), 'snippets', `${snippet}.ts.tpl`), 'utf8')
+  const content = renderString(source, {
+    Name,
+    camel: toCamel(slug),
+    slug,
+    tenantScoped: d.tenantScoped,
+    isGlobal: d.isGlobal,
+    accessBlock,
+    accessImports,
+    hasAccessImports: accessImports !== '',
+    imports,
+    titleField: i.useAsTitle ?? pickTitleField(fields),
+    fields: renderFields(
+      fields.length > 0
+        ? fields
+        : parseFieldSpecs(i.kind === 'collection' || d.isGlobal ? 'title:text!' : 'title:text'),
+    ),
+  })
+  return { content, imports }
+}
+
 export async function runGenerate(
   kind: GenerateKind,
   name: string,
@@ -108,11 +168,7 @@ export async function runGenerate(
     throw new CliError(`"${lower}" is a reserved word and cannot be used as an identifier.`)
   }
 
-  // A shared global is a real Payload global; everything else generated as a collection.
-  const isSharedGlobal = kind === 'global' && Boolean(opts.globalShared)
-  const isCollectionLike = kind === 'collection' || (kind === 'global' && !isSharedGlobal)
-  const tenantScoped = isCollectionLike && !opts.globalShared
-  const isGlobal = kind === 'global' && !isSharedGlobal
+  const { isSharedGlobal, isCollectionLike, tenantScoped, isGlobal } = derive(kind, opts.globalShared)
 
   const outDir = join(srcDir, isCollectionLike ? 'collections' : OUT_DIR[kind])
   const fileName = `${identifiable ? lower : Name}.ts`
@@ -129,8 +185,6 @@ export async function runGenerate(
   if (hasRules && !isCollectionLike) {
     throw new CliError(`--access only applies to collections and per-tenant globals, not ${isSharedGlobal ? 'shared globals' : `${kind}s`}.`)
   }
-  const effectiveRules: AccessRules = hasRules ? rules : tenantScoped ? { read: 'tenant-scoped' } : {}
-  const { block: accessBlock, imports: accessImports } = renderAccessBlock(effectiveRules)
 
   const hasFields = kind === 'collection' || kind === 'global' || kind === 'block'
   const fields = opts.fields ?? []
@@ -160,31 +214,17 @@ export async function runGenerate(
       )
     }
   }
-  // Blocks generated into src/blocks sit next to each other; everything else is one level deeper.
-  const blockBase = kind === 'block' ? '.' : '../blocks'
-  const imports = blockSlugs
-    .map((b) => `import { ${toPascal(b)} } from '${blockBase}/${toPascal(b)}'\n`)
-    .join('')
   if (existsSync(target) && !opts.force) {
     throw new CliError(`Refusing to overwrite ${rel} (use --force).`)
   }
 
-  const snippet = isSharedGlobal ? 'global' : isCollectionLike ? 'collection' : kind
-  const source = readFileSync(join(templatesDir(), 'snippets', `${snippet}.ts.tpl`), 'utf8')
-  const content = renderString(source, {
-    Name,
-    camel: lower,
-    slug,
-    tenantScoped,
-    isGlobal,
-    accessBlock,
-    accessImports,
-    hasAccessImports: accessImports !== '',
-    imports,
-    titleField: opts.useAsTitle ?? pickTitleField(fields),
-    fields: renderFields(
-      fields.length > 0 ? fields : parseFieldSpecs(kind === 'collection' || isGlobal ? 'title:text!' : 'title:text'),
-    ),
+  const { content } = renderGenerated({
+    kind,
+    name,
+    fields,
+    useAsTitle: opts.useAsTitle,
+    access: opts.access,
+    globalShared: opts.globalShared,
   })
 
   if (opts.dryRun) return { files: [rel], registered: false }
