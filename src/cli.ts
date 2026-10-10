@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { Command } from 'commander'
 import { registerAccess } from './commands/access.js'
 import { registerCreate } from './commands/create.js'
+import { registerData } from './commands/data.js'
 import { registerDoctor } from './commands/doctor.js'
 import { registerGenerate } from './commands/generate.js'
 import { registerTenant } from './commands/tenant.js'
@@ -26,6 +27,7 @@ export function buildProgram(): Command {
   registerTenant(program)
   registerAccess(program)
   registerUser(program)
+  registerData(program)
   registerWrappers(program)
   registerDoctor(program)
   return program
