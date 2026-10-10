@@ -1,8 +1,9 @@
 import { Box, Text, useApp, useInput } from 'ink'
 import { basename } from 'node:path'
-import React, { useReducer, useState } from 'react'
+import React, { useMemo, useReducer, useRef, useState } from 'react'
 import type { ProjectInfo } from '../core/project.js'
 import { Frame, type Size, useSize } from './components/Frame.js'
+import { TextEntryContext } from './components/TextInput.js'
 import { Home } from './screens/Home.js'
 import { type Nav, renderScreen, screenHints, screenTitle } from './screens/index.js'
 import { navReducer, type Screen } from './state/nav.js'
@@ -21,6 +22,18 @@ export function App({ project, cwd, size }: { project: ProjectInfo | null; cwd: 
   const [help, setHelp] = useState(false)
   const { exit } = useApp()
   const dims = useSize(size)
+  const typing = useRef(0)
+  const textEntry = useMemo(
+    () => ({
+      enter: () => {
+        typing.current++
+        return () => {
+          typing.current--
+        }
+      },
+    }),
+    [],
+  )
   const screen = stack[stack.length - 1]!
 
   const nav: Nav = {
@@ -30,14 +43,15 @@ export function App({ project, cwd, size }: { project: ProjectInfo | null; cwd: 
   }
 
   useInput((input) => {
-    if (input === '?') setHelp((h) => !h)
-    else if (input === 'q' && screen.name === 'home' && !help) exit()
+    if (input === '?' && typing.current === 0) setHelp((h) => !h)
+    else if (input === 'q' && screen.name === 'home' && !help && typing.current === 0) exit()
   })
 
   const ctx = { project, cwd, nav, size: dims }
   const title = project ? basename(project.root) : 'no project'
 
   return (
+    <TextEntryContext.Provider value={textEntry}>
     <Frame
       title={title}
       subtitle={screenTitle(screen)}
@@ -60,5 +74,6 @@ export function App({ project, cwd, size }: { project: ProjectInfo | null; cwd: 
         renderScreen(screen, ctx)
       )}
     </Frame>
+    </TextEntryContext.Provider>
   )
 }

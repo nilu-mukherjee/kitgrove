@@ -1,6 +1,9 @@
 import { Text, useInput } from 'ink'
 import React from 'react'
+import { dirname } from 'node:path'
+import { discover, runGenerate } from '../../commands/generate.js'
 import type { ProjectInfo } from '../../core/project.js'
+import { Builder } from './Builder.js'
 import type { Size } from '../components/Frame.js'
 import type { Screen } from '../state/nav.js'
 
@@ -58,5 +61,19 @@ export function screenHints(screen: Screen): string[] {
 
 /** Screens registered in later tasks replace the placeholder here. */
 export function renderScreen(screen: Screen, ctx: ScreenContext): React.ReactNode {
-  return <Placeholder nav={ctx.nav} name={screenTitle(screen)} />
+  switch (screen.name) {
+    case 'builder':
+      if (!ctx.project) return <Placeholder nav={ctx.nav} name="Run this inside a Payload project; the builder" />
+      return (
+        <Builder
+          kind={screen.kind}
+          info={discover(dirname(ctx.project.configPath))}
+          generate={(kind, name, opts) => runGenerate(kind, name, { ...opts, cwd: ctx.cwd })}
+          onExit={ctx.nav.pop}
+          size={ctx.size}
+        />
+      )
+    default:
+      return <Placeholder nav={ctx.nav} name={screenTitle(screen)} />
+  }
 }

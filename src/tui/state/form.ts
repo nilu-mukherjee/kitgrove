@@ -40,8 +40,6 @@ export interface FormRow {
   choices?: string[]
 }
 
-const NUMERIC: RowKey[] = ['min', 'max', 'minLength', 'maxLength']
-
 /** The editable rows for one field: only what its type supports, in a stable order. */
 export function fieldForm(spec: FieldSpec): FormRow[] {
   const rows: FormRow[] = [
@@ -206,4 +204,15 @@ export function validateDraft(spec: FieldSpec, siblings: FieldSpec[]): string | 
   }
 }
 
-export const NUMERIC_ROWS = NUMERIC
+/**
+ * An empty container (array, group, row, collapsible, tabs) cannot be saved, so it gets one default
+ * `title` text field (or one tab with it) that the user can then open and change.
+ */
+export function completeContainer(spec: FieldSpec): FieldSpec {
+  const child: FieldSpec = { name: 'title', type: 'text', required: false }
+  if (['array', 'group', 'row', 'collapsible'].includes(spec.type) && !spec.fields?.length) {
+    return { ...spec, fields: [child] }
+  }
+  if (spec.type === 'tabs' && !spec.tabs?.length) return { ...spec, tabs: [{ label: 'Tab 1', fields: [child] }] }
+  return spec
+}

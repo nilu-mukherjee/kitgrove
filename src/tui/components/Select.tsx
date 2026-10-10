@@ -1,5 +1,5 @@
 import { Box, Text, useInput } from 'ink'
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 
 export interface SelectItem<T extends string = string> {
   label: string
@@ -21,18 +21,21 @@ export function Select<T extends string>({
   initialIndex?: number
 }) {
   const [index, setIndex] = useState(Math.min(initialIndex, Math.max(0, items.length - 1)))
+  const current = useRef(index)
+  current.current = index
 
   const move = (to: number) => {
     const next = Math.max(0, Math.min(items.length - 1, to))
+    current.current = next
     setIndex(next)
     if (items[next]) onHighlight?.(items[next]!.value)
   }
 
   useInput(
     (input, key) => {
-      if (key.upArrow || input === 'k') move(index - 1)
-      else if (key.downArrow || input === 'j') move(index + 1)
-      else if (key.return && items[index]) onSelect(items[index]!.value)
+      if (key.upArrow || input === 'k') move(current.current - 1)
+      else if (key.downArrow || input === 'j') move(current.current + 1)
+      else if (key.return && items[current.current]) onSelect(items[current.current]!.value)
     },
     { isActive },
   )

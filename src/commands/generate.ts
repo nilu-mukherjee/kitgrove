@@ -342,14 +342,15 @@ export function registerGenerate(program: Command): void {
     .action((kind: string, name: string | undefined, o: GenerateFlags) => handleGenerate(kind, name, o))
 }
 
-interface PromptContext {
+export interface PromptContext {
   /** Collection slugs a relationship, upload or join can point at. */
   collections: string[]
   /** Slugs of blocks that exist in src/blocks. */
   blocks: string[]
 }
 
-function discover(srcDir: string): PromptContext {
+/** Collections and blocks that exist in a project's source directory. */
+export function discover(srcDir: string): PromptContext {
   const collections = new Set(['users', 'media'])
   const collectionsDir = join(srcDir, 'collections')
   if (existsSync(collectionsDir)) {

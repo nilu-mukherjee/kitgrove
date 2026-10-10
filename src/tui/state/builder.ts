@@ -32,6 +32,7 @@ export type BuilderAction =
   | { type: 'remove'; index: number }
   | { type: 'move'; index: number; direction: 'up' | 'down' }
   | { type: 'select'; index: number }
+  | { type: 'selectBy'; delta: number }
   | { type: 'enter'; tab?: number }
   | { type: 'leave' }
   | { type: 'clearError' }
@@ -122,6 +123,8 @@ export function builderReducer(s: BuilderState, a: BuilderAction): BuilderState 
     }
     case 'select':
       return { ...s, selected: Math.max(0, Math.min(list.length - 1, a.index)) }
+    case 'selectBy':
+      return { ...s, selected: Math.max(0, Math.min(list.length - 1, s.selected + a.delta)) }
     case 'enter': {
       const f = list[s.selected]
       if (!f || !(f.fields || f.tabs)) return s

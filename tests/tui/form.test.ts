@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseFieldSpecs } from '../../src/core/fields.js'
-import { applyRow, fieldForm, validateDraft } from '../../src/tui/state/form.js'
+import { applyRow, completeContainer, fieldForm, validateDraft } from '../../src/tui/state/form.js'
 
 const keys = (input: string) => fieldForm(parseFieldSpecs(input)[0]!).map((r) => r.key)
 
@@ -100,5 +100,21 @@ describe('validateDraft', () => {
     expect(validateDraft({ name: 'a', type: 'text', required: false }, siblings)).toMatch(/Duplicate/)
     expect(validateDraft({ name: 'b', type: 'select', required: false }, siblings)).toMatch(/options/)
     expect(validateDraft({ name: 'b', type: 'text', required: false }, siblings)).toBeNull()
+  })
+})
+
+describe('completeContainer', () => {
+  it('gives an empty container a default title child so it can be saved', () => {
+    const arr = completeContainer({ name: 'links', type: 'array', required: false })
+    expect(arr.fields).toEqual([{ name: 'title', type: 'text', required: false }])
+    const tabs = completeContainer({ name: 'layout', type: 'tabs', required: false })
+    expect(tabs.tabs).toEqual([{ label: 'Tab 1', fields: [{ name: 'title', type: 'text', required: false }] }])
+  })
+
+  it('leaves non-containers and filled containers alone', () => {
+    const text = { name: 'a', type: 'text' as const, required: false }
+    expect(completeContainer(text)).toBe(text)
+    const group = parseFieldSpecs('g:group(x:number)')[0]!
+    expect(completeContainer(group)).toBe(group)
   })
 })

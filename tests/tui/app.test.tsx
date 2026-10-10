@@ -1,11 +1,14 @@
 import { render } from 'ink-testing-library'
 import React from 'react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup } from 'ink-testing-library'
 import type { ProjectInfo } from '../../src/core/project.js'
 import { App } from '../../src/tui/App.js'
 
+afterEach(cleanup)
+
 const DOWN = '\u001B[B'
-const tick = () => new Promise((r) => setTimeout(r, 30))
+const tick = () => new Promise((r) => setTimeout(r, 80))
 const size = { columns: 100, rows: 30 }
 
 const project: ProjectInfo = {
@@ -56,6 +59,28 @@ describe('App / Home', () => {
     stdin.write('?')
     await tick()
     expect(lastFrame()).not.toContain('Keys')
+  })
+
+  it('does not treat ? as help while typing in a text field', async () => {
+    const { stdin, lastFrame } = render(<App project={project} cwd="/work/my-site" size={size} />)
+    stdin.write(DOWN) // New collection
+    await tick()
+    stdin.write('\r')
+    await tick()
+    stdin.write('Why?')
+    await tick()
+    expect(lastFrame()).toContain('Why?')
+    expect(lastFrame()).not.toContain('Keys')
+  })
+
+  it('opens the collection builder from Home', async () => {
+    const { stdin, lastFrame } = render(<App project={project} cwd="/work/my-site" size={size} />)
+    stdin.write(DOWN)
+    await tick()
+    stdin.write('\r')
+    await tick()
+    expect(lastFrame()).toContain('Name:')
+    expect(lastFrame()).toContain('Preview')
   })
 
   it('shows the too-small message in a small terminal', () => {
