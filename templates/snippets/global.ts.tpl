@@ -4,9 +4,6 @@ import type { GlobalConfig } from 'payload'
 export const {{Name}}: GlobalConfig = {
   slug: '{{slug}}',
   fields: [
-    {
-      name: 'title',
-      type: 'text',
-    },
+{{fields}}
   ],
 }

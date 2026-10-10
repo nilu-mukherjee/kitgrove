@@ -9,13 +9,9 @@ import { tenantScoped } from '../access/tenantScoped'
     read: tenantScoped,
   },
 {{/if}}  admin: {
-    useAsTitle: 'title',
+    useAsTitle: '{{titleField}}',
   },
   fields: [
-    {
-      name: 'title',
-      type: 'text',
-      required: true,
-    },
+{{fields}}
   ],
 }

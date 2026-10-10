@@ -4,9 +4,6 @@ export const {{Name}}: Block = {
   slug: '{{slug}}',
   interfaceName: '{{Name}}Block',
   fields: [
-    {
-      name: 'title',
-      type: 'text',
-    },
+{{fields}}
   ],
 }

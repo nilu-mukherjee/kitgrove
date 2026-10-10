@@ -3,6 +3,8 @@ import { dirname, join, relative } from 'node:path'
 import type { Command } from 'commander'
 import { registerInConfig } from '../core/codemod.js'
 import { CliError } from '../core/errors.js'
+import * as p from '@clack/prompts'
+import { FIELD_TYPES, type FieldSpec, parseFieldSpecs, pickTitleField, renderFields } from '../core/fields.js'
 import { templatesDir } from '../core/paths.js'
 import { requireProject } from '../core/project.js'
 import { renderString, toSlug } from '../core/template.js'
@@ -15,6 +17,8 @@ export interface GenerateOptions {
   globalShared?: boolean
   force?: boolean
   dryRun?: boolean
+  /** Fields for collection/global/block; empty or omitted gives a single `title` field. */
+  fields?: FieldSpec[]
 }
 
 export interface GenerateResult {
@@ -107,6 +111,19 @@ export async function runGenerate(
       throw new CliError(`A collection or global with slug "${slug}" already exists.`)
     }
   }
+  const hasFields = kind === 'collection' || kind === 'global' || kind === 'block'
+  const fields = opts.fields ?? []
+  if (fields.length > 0 && !hasFields) {
+    throw new CliError(`--fields only applies to collection, global and block, not ${kind}.`)
+  }
+  for (const f of fields) {
+    const to = f.relationTo
+    if (to && to !== slug && !BUILT_IN_SLUGS.has(to) && !slugExists(srcDir, to, '')) {
+      throw new CliError(
+        `Field "${f.name}" points to "${to}", which does not exist in this project — generate it first (paycms generate collection ${to}).`,
+      )
+    }
+  }
   if (existsSync(target) && !opts.force) {
     throw new CliError(`Refusing to overwrite ${rel} (use --force).`)
   }
@@ -119,6 +136,10 @@ export async function runGenerate(
     slug,
     tenantScoped,
     isGlobal,
+    titleField: pickTitleField(fields),
+    fields: renderFields(
+      fields.length > 0 ? fields : parseFieldSpecs(kind === 'collection' || isGlobal ? 'title:text!' : 'title:text'),
+    ),
   })
 
   if (opts.dryRun) return { files: [rel], registered: false }
@@ -149,16 +170,28 @@ export function registerGenerate(program: Command): void {
     .option('--global-shared', 'collection: not tenant-scoped; global: a real Payload global shared by all tenants')
     .option('-f, --force', 'overwrite an existing file')
     .option('--dry-run', 'show what would be created')
+    .option('--fields <spec>', 'fields for collection/global/block, e.g. "title:text!,image:upload:media,status:select:draft|live"')
+    .option('-y, --yes', 'do not prompt for fields')
     .action(
       async (
         kind: string,
         name: string,
-        o: { globalShared?: boolean; force?: boolean; dryRun?: boolean },
+        o: { globalShared?: boolean; force?: boolean; dryRun?: boolean; fields?: string; yes?: boolean },
       ) => {
         if (!(KINDS as readonly string[]).includes(kind)) {
           throw new CliError(`Unknown kind "${kind}". Choose one of: ${KINDS.join(', ')}.`)
         }
-        const result = await runGenerate(kind as GenerateKind, name, { ...o, cwd: process.cwd() })
+        const takesFields = ['collection', 'global', 'block'].includes(kind)
+        let fields = o.fields ? parseFieldSpecs(o.fields) : []
+        const interactive = process.stdin.isTTY && process.stdout.isTTY && !o.yes && !o.dryRun
+        if (takesFields && !o.fields && interactive) fields = await promptFields()
+        const result = await runGenerate(kind as GenerateKind, name, {
+          globalShared: o.globalShared,
+          force: o.force,
+          dryRun: o.dryRun,
+          fields,
+          cwd: process.cwd(),
+        })
         for (const f of result.files) console.log(`${o.dryRun ? 'Would create' : 'Created'} ${f}`)
         if (result.registered) console.log('Registered in payload.config.ts')
         if (result.manualInstructions) {
@@ -169,4 +202,59 @@ export function registerGenerate(program: Command): void {
         }
       },
     )
+}
+
+/** Asks for fields one at a time; an empty name finishes. Returns [] to use the default `title` field. */
+async function promptFields(): Promise<FieldSpec[]> {
+  const entries: string[] = []
+  const cancelled = (v: unknown): never | void => {
+    if (p.isCancel(v)) {
+      p.cancel('Cancelled.')
+      process.exit(1)
+    }
+  }
+
+  for (;;) {
+    const name = await p.text({
+      message: entries.length
+        ? 'Next field name (leave empty to finish)'
+        : 'Field name (leave empty for just a `title` field)',
+      placeholder: 'e.g. client',
+    })
+    cancelled(name)
+    if (!name || !String(name).trim()) break
+
+    const type = await p.select({
+      message: `Type of "${String(name)}"`,
+      options: FIELD_TYPES.map((t) => ({ value: t, label: t })),
+    })
+    cancelled(type)
+
+    let arg = ''
+    if (type === 'select') {
+      const options = await p.text({ message: 'Options, separated by |', placeholder: 'draft|published' })
+      cancelled(options)
+      arg = `:${String(options)}`
+    } else if (type === 'upload' || type === 'relationship') {
+      const target = await p.text({
+        message: 'Target collection slug',
+        placeholder: type === 'upload' ? 'media' : 'categories',
+        initialValue: type === 'upload' ? 'media' : '',
+      })
+      cancelled(target)
+      arg = `:${String(target)}`
+    }
+
+    const required = await p.confirm({ message: 'Required?', initialValue: false })
+    cancelled(required)
+
+    const entry = `${String(name).trim()}:${String(type)}${arg}${required ? '!' : ''}`
+    try {
+      parseFieldSpecs([...entries, entry].join(','))
+      entries.push(entry)
+    } catch (err) {
+      p.log.error(err instanceof CliError ? err.message : String(err))
+    }
+  }
+  return parseFieldSpecs(entries.join(','))
 }

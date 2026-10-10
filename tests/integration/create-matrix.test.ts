@@ -51,6 +51,38 @@ describe.each(combos)('built CLI: %s / %s', (template, db) => {
   })
 })
 
+describe('built CLI: --fields', () => {
+  const scaffold = () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
+    paycms(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
+    return join(cwd, 'site')
+  }
+
+  it('creates a collection with the requested fields', () => {
+    const root = scaffold()
+    const r = paycms(root, 'generate', 'collection', 'Case Studies', '--fields', 'client:text!,image:upload:media')
+    expect(r.code, r.err).toBe(0)
+    const file = readFileSync(join(root, 'src/collections/CaseStudies.ts'), 'utf8')
+    expect(file).toContain(`name: 'client'`)
+    expect(file).toContain(`relationTo: 'media'`)
+  })
+
+  it('reports a bad field spec without creating anything', () => {
+    const root = scaffold()
+    const r = paycms(root, 'generate', 'collection', 'Notes', '--fields', 'a:wat')
+    expect(r.code).toBe(1)
+    expect(r.err).toMatch(/Unknown field type "wat"/)
+    expect(paycms(root, 'generate', 'collection', 'Notes').code).toBe(0)
+  })
+
+  it('does not prompt when stdin is not a TTY', () => {
+    const root = scaffold()
+    const r = paycms(root, 'generate', 'collection', 'Plain')
+    expect(r.code, r.err).toBe(0)
+    expect(readFileSync(join(root, 'src/collections/Plain.ts'), 'utf8')).toContain(`name: 'title'`)
+  })
+})
+
 describe('built CLI: outside a project', () => {
   it.each([['tenant', 'list'], ['doctor'], ['dev'], ['generate', 'collection', 'x']])('%s fails clearly', (...args) => {
     const r = paycms(mkdtempSync(join(tmpdir(), 'paycms-none-')), ...args)

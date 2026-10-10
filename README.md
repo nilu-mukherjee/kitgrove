@@ -19,14 +19,29 @@ Requires Node 20.12 or newer.
 | Command | What it does |
 |---|---|
 | `paycms create <name> [-t blank\|blog\|corporate] [-d postgres\|mongodb] [--pm npm\|pnpm\|yarn]` | Scaffold a project. `--yes` skips prompts, `--no-install` skips installing, `--dry-run` lists files. |
-| `paycms generate collection <name> [--global-shared]` | New collection, registered in `payload.config.ts`. Tenant-scoped unless `--global-shared`. |
-| `paycms generate global <name> [--global-shared]` | A per-tenant global (one document per tenant). With `--global-shared`, a real Payload global shared by all tenants. |
-| `paycms generate block\|field\|hook\|access <name>` | Scaffold the file; import it where you need it. |
+| `paycms generate collection <name> [--fields <spec>] [--global-shared]` | New collection, registered in `payload.config.ts`. Tenant-scoped unless `--global-shared`. In a terminal it asks for fields; use `--fields` (or `--yes`) to skip the prompts. |
+| `paycms generate global <name> [--fields <spec>] [--global-shared]` | A per-tenant global (one document per tenant). With `--global-shared`, a real Payload global shared by all tenants. |
+| `paycms generate block <name> [--fields <spec>]` | A block with the given fields; import it into a `blocks` field. |
+| `paycms generate field\|hook\|access <name>` | Scaffold the file; import it where you need it. |
 | `paycms tenant add <name> [--slug s] [--domain x.com] [--starter]` | Create a site. `--starter` also creates its `home` page. |
 | `paycms tenant list` / `paycms tenant remove <slug> [--yes]` | List or delete sites. |
 | `paycms dev` / `build` / `types` | Run the project's `dev`, `build` and `generate:types` scripts. |
 | `paycms migrate [args…]` | `payload migrate`, e.g. `paycms migrate create add-notes`. |
 | `paycms doctor` | Diagnose the current project. |
+
+### Field specs
+
+`--fields` takes a comma-separated list of `name:type[:arg][!]`; a trailing `!` makes the field required.
+
+```bash
+paycms generate collection "Case Studies" \
+  --fields "client:text!,summary:textarea,image:upload:media,status:select:draft|live,author:relationship:users"
+```
+
+Types: `text`, `textarea`, `richText`, `number`, `checkbox`, `date`, `email`, `select` (`:a|b|c`),
+`upload` and `relationship` (`:<collection slug>`, which must already exist). Without fields you get a
+single `title` field. The admin title is `title` if present, otherwise the first text or email field.
+Arrays and `hasMany` are not generated; add them by editing the file.
 
 Generators never overwrite an existing file without `--force`. If `payload.config.ts` is shaped in a way
 that cannot be edited safely (for example `collections` is a variable), the file is still created, the

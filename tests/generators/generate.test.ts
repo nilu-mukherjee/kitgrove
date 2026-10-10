@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { runCreate } from '../../src/commands/create.js'
 import { runGenerate } from '../../src/commands/generate.js'
 import { CliError } from '../../src/core/errors.js'
+import { parseFieldSpecs } from '../../src/core/fields.js'
 
 async function project() {
   const cwd = mkdtempSync(join(tmpdir(), 'paycms-gen-'))
@@ -90,6 +91,53 @@ describe('generate collection', () => {
     expect(result.files).toEqual(['src/collections/Notes.ts'])
     expect(existsSync(join(root, 'src/collections/Notes.ts'))).toBe(false)
     expect(read(root, 'src/payload.config.ts')).toBe(before)
+  })
+})
+
+describe('generate with fields', () => {
+  it('writes the requested fields and picks the title field', async () => {
+    const root = await project()
+    await runGenerate('collection', 'Case Studies', {
+      cwd: root,
+      fields: parseFieldSpecs('client:text!,summary:textarea,image:upload:media,status:select:draft|live'),
+    })
+    const file = read(root, 'src/collections/CaseStudies.ts')
+    expect(file).toContain(`name: 'client'`)
+    expect(file).toContain(`relationTo: 'media'`)
+    expect(file).toContain(`options: ['draft', 'live']`)
+    expect(file).toContain(`useAsTitle: 'client'`)
+    expect(file).not.toContain(`name: 'title'`)
+  })
+
+  it('keeps the default title field when no fields are given', async () => {
+    const root = await project()
+    await runGenerate('collection', 'notes', { cwd: root, fields: [] })
+    expect(read(root, 'src/collections/Notes.ts')).toContain(`name: 'title'`)
+  })
+
+  it('accepts a relationship to an existing collection and rejects an unknown one', async () => {
+    const root = await project()
+    await runGenerate('collection', 'authors', { cwd: root })
+    await runGenerate('collection', 'books', { cwd: root, fields: parseFieldSpecs('author:relationship:authors') })
+    await expect(
+      runGenerate('collection', 'movies', { cwd: root, fields: parseFieldSpecs('director:relationship:directors') }),
+    ).rejects.toThrow(/"directors".*generate it first/)
+    expect(existsSync(join(root, 'src/collections/Movies.ts'))).toBe(false)
+  })
+
+  it('applies to blocks and shared globals', async () => {
+    const root = await project()
+    await runGenerate('block', 'Callout', { cwd: root, fields: parseFieldSpecs('text:textarea!') })
+    expect(read(root, 'src/blocks/Callout.ts')).toContain(`type: 'textarea'`)
+    await runGenerate('global', 'Branding', { cwd: root, globalShared: true, fields: parseFieldSpecs('tagline:text') })
+    expect(read(root, 'src/globals/Branding.ts')).toContain(`name: 'tagline'`)
+  })
+
+  it.each(['field', 'hook', 'access'] as const)('rejects fields for %s', async (kind) => {
+    const root = await project()
+    await expect(
+      runGenerate(kind, 'thing', { cwd: root, fields: parseFieldSpecs('a:text') }),
+    ).rejects.toThrow(/--fields/)
   })
 })
 
