@@ -29,7 +29,7 @@ export function registerWrappers(program: Command): void {
   const defs: [WrapperName, string][] = [
     ['dev', 'Start the Next.js + Payload dev server'],
     ['build', 'Build the project for production'],
-    ['migrate', 'Run `payload migrate` (pass subcommands, e.g. `paycms migrate create add-notes`)'],
+    ['migrate', 'Run `payload migrate` (pass subcommands, e.g. `grovekit migrate create add-notes`)'],
     ['types', 'Regenerate payload-types.ts'],
   ]
   for (const [name, description] of defs) {

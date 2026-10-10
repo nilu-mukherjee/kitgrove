@@ -8,7 +8,7 @@ import { CliError } from '../../src/core/errors.js'
 import { parseFieldSpecs } from '../../src/core/fields.js'
 
 async function project() {
-  const cwd = mkdtempSync(join(tmpdir(), 'paycms-gen-'))
+  const cwd = mkdtempSync(join(tmpdir(), 'grovekit-gen-'))
   await runCreate({ name: 'site', template: 'blank', db: 'postgres', pm: 'npm', yes: true, install: false, cwd })
   return join(cwd, 'site')
 }
@@ -259,7 +259,7 @@ describe('generate with container fields', () => {
     const root = await project()
     await expect(
       runGenerate('collection', 'landing', { cwd: root, fields: parseFieldSpecs('layout:blocks(nope)') }),
-    ).rejects.toThrow(/block "nope".*generate it first \(paycms generate block nope\)/)
+    ).rejects.toThrow(/block "nope".*generate it first \(grovekit generate block nope\)/)
     expect(existsSync(join(root, 'src/collections/Landing.ts'))).toBe(false)
   })
 
@@ -321,7 +321,7 @@ describe('other generators', () => {
 
 describe('outside a project', () => {
   it('throws a CliError', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'paycms-nogen-'))
+    const dir = mkdtempSync(join(tmpdir(), 'grovekit-nogen-'))
     mkdirSync(join(dir, 'x'))
     await expect(runGenerate('collection', 'notes', { cwd: join(dir, 'x') })).rejects.toThrow(
       /Not inside a Payload project/,

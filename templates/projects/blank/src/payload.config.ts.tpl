@@ -45,7 +45,7 @@ export default buildConfig({
 {{#if corporate}}    // Registered before the multi-tenant plugin so the forms collections get a tenant field too.
     formBuilderPlugin({}),
 {{/if}}    multiTenantPlugin({
-      // Every tenant-scoped collection is listed here; `paycms generate collection` adds new ones.
+      // Every tenant-scoped collection is listed here; `grovekit generate collection` adds new ones.
       collections: {
         pages: {},
         media: {},

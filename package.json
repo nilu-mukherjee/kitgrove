@@ -1,10 +1,10 @@
 {
-  "name": "paycms",
+  "name": "grovekit",
   "version": "0.1.0",
   "description": "CLI to create and manage multi-tenant Payload CMS projects",
   "type": "module",
   "bin": {
-    "paycms": "dist/cli.js"
+    "grovekit": "dist/cli.js"
   },
   "files": [
     "dist",

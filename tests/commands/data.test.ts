@@ -92,7 +92,7 @@ describe('listDocuments', () => {
 
   it('rejects an unknown collection with a hint, and --tenant on a non tenant-scoped one', async () => {
     const { api } = setup()
-    await expect(listDocuments(api, { collection: 'pgaes' })).rejects.toThrow(/paycms data collections/)
+    await expect(listDocuments(api, { collection: 'pgaes' })).rejects.toThrow(/grovekit data collections/)
     await expect(listDocuments(api, { collection: 'categories', tenant: 'acme' })).rejects.toThrow(/not tenant-scoped/)
     await expect(listDocuments(api, { collection: 'pages', tenant: 'nope' })).rejects.toThrow(/No tenant/)
   })

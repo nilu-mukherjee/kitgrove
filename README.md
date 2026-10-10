@@ -1,43 +1,43 @@
-# paycms
+# grovekit
 
 A CLI that creates and manages **multi-tenant [Payload CMS](https://payloadcms.com) 3.x** projects:
 one Payload app and database serving many sites, one *tenant* per site.
 
 ```bash
-npm install -g paycms
-paycms create my-sites --template corporate --db postgres
+npm install -g grovekit
+grovekit create my-sites --template corporate --db postgres
 cd my-sites
 cp .env.example .env        # DATABASE_URL, PAYLOAD_SECRET
-paycms doctor               # checks config, dependencies, env and DB reachability
-paycms dev
+grovekit doctor               # checks config, dependencies, env and DB reachability
+grovekit dev
 ```
 
 Requires Node 20.12 or newer.
 
-Run `paycms` with no arguments for the full-screen terminal UI (see [Terminal UI](#terminal-ui)).
+Run `grovekit` with no arguments for the full-screen terminal UI (see [Terminal UI](#terminal-ui)).
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `paycms create <name> [-t blank\|blog\|corporate] [-d postgres\|mongodb] [--pm npm\|pnpm\|yarn]` | Scaffold a project. `--yes` skips prompts, `--no-install` skips installing, `--dry-run` lists files. |
-| `paycms create collection [name]` (same as `paycms generate collection`) | New collection, registered in `payload.config.ts`. In a terminal it asks for the name, `useAsTitle`, then each field. Tenant-scoped unless `--global-shared`. `--fields`, `--use-as-title <field>` or `--yes` skip the prompts. |
-| `paycms generate global <name> [--fields <spec>] [--global-shared]` | A per-tenant global (one document per tenant). With `--global-shared`, a real Payload global shared by all tenants. |
-| `paycms generate block <name> [--fields <spec>]` | A block with the given fields; import it into a `blocks` field. |
-| `paycms generate field\|hook\|access <name>` | Scaffold the file; import it where you need it. |
-| `paycms tenant add <name> [--slug s] [--domain x.com] [--starter]` | Create a site. `--starter` also creates its `home` page. |
-| `paycms tenant list` / `paycms tenant remove <slug> [--yes]` | List or delete sites. |
-| `paycms dev` / `build` / `types` | Run the project's `dev`, `build` and `generate:types` scripts. |
-| `paycms migrate [args…]` | `payload migrate`, e.g. `paycms migrate create add-notes`. |
-| `paycms access set <collection> --read <rule> --update <rule> …` / `paycms access show [collection]` | Change or show who can read/create/update/delete a collection. |
-| `paycms user list\|add\|roles\|assign\|unassign\|remove\|reset-password` | Users, roles and tenant membership. |
-| `paycms data collections\|list\|get\|create\|update\|delete` | Browse and edit documents. |
-| `paycms tui` | The terminal UI (same as running `paycms` with no arguments in a terminal). |
-| `paycms doctor` | Diagnose the current project. |
+| `grovekit create <name> [-t blank\|blog\|corporate] [-d postgres\|mongodb] [--pm npm\|pnpm\|yarn]` | Scaffold a project. `--yes` skips prompts, `--no-install` skips installing, `--dry-run` lists files. |
+| `grovekit create collection [name]` (same as `grovekit generate collection`) | New collection, registered in `payload.config.ts`. In a terminal it asks for the name, `useAsTitle`, then each field. Tenant-scoped unless `--global-shared`. `--fields`, `--use-as-title <field>` or `--yes` skip the prompts. |
+| `grovekit generate global <name> [--fields <spec>] [--global-shared]` | A per-tenant global (one document per tenant). With `--global-shared`, a real Payload global shared by all tenants. |
+| `grovekit generate block <name> [--fields <spec>]` | A block with the given fields; import it into a `blocks` field. |
+| `grovekit generate field\|hook\|access <name>` | Scaffold the file; import it where you need it. |
+| `grovekit tenant add <name> [--slug s] [--domain x.com] [--starter]` | Create a site. `--starter` also creates its `home` page. |
+| `grovekit tenant list` / `grovekit tenant remove <slug> [--yes]` | List or delete sites. |
+| `grovekit dev` / `build` / `types` | Run the project's `dev`, `build` and `generate:types` scripts. |
+| `grovekit migrate [args…]` | `payload migrate`, e.g. `grovekit migrate create add-notes`. |
+| `grovekit access set <collection> --read <rule> --update <rule> …` / `grovekit access show [collection]` | Change or show who can read/create/update/delete a collection. |
+| `grovekit user list\|add\|roles\|assign\|unassign\|remove\|reset-password` | Users, roles and tenant membership. |
+| `grovekit data collections\|list\|get\|create\|update\|delete` | Browse and edit documents. |
+| `grovekit tui` | The terminal UI (same as running `grovekit` with no arguments in a terminal). |
+| `grovekit doctor` | Diagnose the current project. |
 
 ### Fields
 
-In a terminal, `paycms create collection` asks for the **collection name**, then **useAsTitle** (the field
+In a terminal, `grovekit create collection` asks for the **collection name**, then **useAsTitle** (the field
 that names a document in the admin), then for each field: **name**, **type** (the full Payload list),
 whatever that type needs (options, target collection, nested fields…), **required**, **unique**, a
 **default value**, and, behind one confirm, extras (label, description, admin position, read-only, index,
@@ -48,7 +48,7 @@ hasMany, min/max, minLength/maxLength). Leave the field name empty to finish; wi
 For scripts and CI, pass the same thing with `--fields` (or `--yes` to skip prompts entirely):
 
 ```bash
-paycms generate collection "Case Studies" --fields \
+grovekit generate collection "Case Studies" --fields \
   "client:text!,status:select:draft|live,cover:upload:media,links:array(label:text!,url:text!)"
 ```
 
@@ -70,7 +70,7 @@ Per-field options go in a trailing `[...]`: flags (`unique`, `index`, `readOnly`
 `maxLength`). Values can't contain `,` or `]`. For example:
 
 ```bash
-paycms create collection Products --use-as-title sku --fields \
+grovekit create collection Products --use-as-title sku --fields \
   "sku:text![unique,index],price:number![min=0],stock:number[default=0],sale:checkbox,status:select:draft|live[default=draft,position=sidebar]"
 ```
 
@@ -103,9 +103,9 @@ Each of `read`, `create`, `update`, `delete` takes one rule:
 | `super-admin` | Super-admins only |
 
 ```bash
-paycms create collection Notes --access read=public,update=tenant-editor,delete=tenant-admin
-paycms access set notes --update tenant-editor        # change one operation, others untouched
-paycms access show                                    # every collection ("custom" = not one of the rules above)
+grovekit create collection Notes --access read=public,update=tenant-editor,delete=tenant-admin
+grovekit access set notes --update tenant-editor        # change one operation, others untouched
+grovekit access show                                    # every collection ("custom" = not one of the rules above)
 ```
 
 Collections generated without `--access` keep `read: tenantScoped` only. Operations you don't set use
@@ -116,28 +116,28 @@ are printed. The helper files in `src/access/` are created if your project lacks
 ## Users
 
 ```bash
-paycms user list [--tenant acme]
-paycms user add ed@acme.com --tenant acme --tenant-role editor     # password: prompted, or PAYCMS_PASSWORD
-paycms user roles ed@acme.com --set super-admin,user
-paycms user assign ed@acme.com --tenant globex --tenant-role admin # replaces the role if already assigned
-paycms user unassign ed@acme.com --tenant globex
-paycms user remove ed@acme.com --yes
-paycms user reset-password ed@acme.com
+grovekit user list [--tenant acme]
+grovekit user add ed@acme.com --tenant acme --tenant-role editor     # password: prompted, or GROVEKIT_PASSWORD
+grovekit user roles ed@acme.com --set super-admin,user
+grovekit user assign ed@acme.com --tenant globex --tenant-role admin # replaces the role if already assigned
+grovekit user unassign ed@acme.com --tenant globex
+grovekit user remove ed@acme.com --yes
+grovekit user reset-password ed@acme.com
 ```
 
 Passwords are never accepted as flags (shell history): you are prompted with hidden input, or in scripts
-set `PAYCMS_PASSWORD`. Emails are case-insensitive. The last super-admin cannot be removed or demoted.
+set `GROVEKIT_PASSWORD`. Emails are case-insensitive. The last super-admin cannot be removed or demoted.
 
 ## Data
 
 ```bash
-paycms data collections
-paycms data list pages --tenant acme --where slug=home --limit 20 --page 1 [--json]
-paycms data get pages 3
-paycms data create pages --tenant acme --set title=Hello --set views=3        # or --json file.json
-paycms data update pages 3 --set title="New title"
-paycms data delete pages 3 --yes
-paycms data list pages --as ed@acme.com          # run as that user, with access control enforced
+grovekit data collections
+grovekit data list pages --tenant acme --where slug=home --limit 20 --page 1 [--json]
+grovekit data get pages 3
+grovekit data create pages --tenant acme --set title=Hello --set views=3        # or --json file.json
+grovekit data update pages 3 --set title="New title"
+grovekit data delete pages 3 --yes
+grovekit data list pages --as ed@acme.com          # run as that user, with access control enforced
 ```
 
 `--set` values are coerced by field type (number, checkbox `true|false`, date, select/radio options,
@@ -147,7 +147,7 @@ with `overrideAccess: true`, like any script holding the database credentials.
 
 ## Terminal UI
 
-`paycms` with no arguments opens a full-screen app (it needs a terminal; otherwise it prints help).
+`grovekit` with no arguments opens a full-screen app (it needs a terminal; otherwise it prints help).
 
 | Screen | What you can do |
 |---|---|
@@ -159,7 +159,7 @@ with `overrideAccess: true`, like any script holding the database credentials.
 | Access | Grid of collections × operations; `Enter` on a cell picks a rule |
 | Data | Pick a collection, page through documents (`[` `]`), filter by tenant (`t`), view, new, edit, delete |
 | Run | `dev`, `build`, `types`, `migrate` with streamed output; `Ctrl+C` stops the process, not the app |
-| Doctor | The same checks as `paycms doctor`; `r` re-runs |
+| Doctor | The same checks as `grovekit doctor`; `r` re-runs |
 
 Keys: `↑↓`/`jk` move, `Enter` open, `Esc` back, `?` help, `q` quit from Home. Data screens connect to
 the database once, on first use. Needs a terminal of at least 80×24. In the builder: `a` add field, `e`

@@ -170,15 +170,15 @@ export async function resetPassword(api: LocalApi, email: string, password: stri
   await api.update({ collection: 'users', id: user.id, data: { password } })
 }
 
-/** Password from a hidden prompt on a TTY, otherwise PAYCMS_PASSWORD. Never from a flag. */
+/** Password from a hidden prompt on a TTY, otherwise GROVEKIT_PASSWORD. Never from a flag. */
 export async function resolvePassword(
   env: Record<string, string | undefined>,
   prompt: () => Promise<string>,
   isTTY: boolean,
 ): Promise<string> {
-  const value = isTTY ? await prompt() : env.PAYCMS_PASSWORD
+  const value = isTTY ? await prompt() : env.GROVEKIT_PASSWORD
   if (value === undefined) {
-    throw new CliError('A password is required: run in a terminal to be prompted, or set PAYCMS_PASSWORD.')
+    throw new CliError('A password is required: run in a terminal to be prompted, or set GROVEKIT_PASSWORD.')
   }
   if (!value) throw new CliError('The password must not be empty.')
   return value
@@ -215,7 +215,7 @@ export function registerUser(program: Command): void {
 
   user
     .command('add <email>')
-    .description('Create a user (password is prompted, or taken from PAYCMS_PASSWORD)')
+    .description('Create a user (password is prompted, or taken from GROVEKIT_PASSWORD)')
     .option('--role <roles>', 'global roles, comma separated (super-admin, user)')
     .option('--tenant <slug>', 'assign to this tenant')
     .option('--tenant-role <role>', 'admin | editor (default editor)')
@@ -269,7 +269,7 @@ export function registerUser(program: Command): void {
 
   user
     .command('reset-password <email>')
-    .description('Set a new password (prompted, or PAYCMS_PASSWORD)')
+    .description('Set a new password (prompted, or GROVEKIT_PASSWORD)')
     .action(async (email: string) => {
       const pw = await password('New password')
       await withLocalApi(project(), (api) => resetPassword(api, email, pw))

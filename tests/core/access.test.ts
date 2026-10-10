@@ -28,7 +28,7 @@ export const Notes: CollectionConfig = {
 `
 
 const write = (content: string) => {
-  const dir = mkdtempSync(join(tmpdir(), 'paycms-access-'))
+  const dir = mkdtempSync(join(tmpdir(), 'grovekit-access-'))
   const path = join(dir, 'Notes.ts')
   writeFileSync(path, content)
   return path
@@ -153,7 +153,7 @@ describe('setAccess', () => {
 
 describe('ensureAccessHelpers', () => {
   it('creates the helper files that are missing and reports them', () => {
-    const srcDir = mkdtempSync(join(tmpdir(), 'paycms-helpers-'))
+    const srcDir = mkdtempSync(join(tmpdir(), 'grovekit-helpers-'))
     const created = ensureAccessHelpers(srcDir, { update: 'tenant-editor' })
     expect(created.sort()).toEqual(
       ['access/isSuperAdmin.ts', 'access/tenantAdminOnly.ts', 'access/tenantEditorOrAdmin.ts', 'access/tenantScoped.ts'].sort(),
@@ -163,7 +163,7 @@ describe('ensureAccessHelpers', () => {
   })
 
   it('creates nothing for rules that need no helper', () => {
-    const srcDir = mkdtempSync(join(tmpdir(), 'paycms-helpers-'))
+    const srcDir = mkdtempSync(join(tmpdir(), 'grovekit-helpers-'))
     expect(ensureAccessHelpers(srcDir, { read: 'public', create: 'authenticated' })).toEqual([])
   })
 })

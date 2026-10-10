@@ -109,7 +109,7 @@ export function registerTenant(program: Command): void {
     .action(async () => {
       const project = requireProject(process.cwd())
       const tenants = await withLocalApi(project, listTenants)
-      if (tenants.length === 0) console.log('No tenants yet. Create one with `paycms tenant add <name>`.')
+      if (tenants.length === 0) console.log('No tenants yet. Create one with `grovekit tenant add <name>`.')
       for (const t of tenants) console.log(`${t.slug}\t${t.domain ?? '-'}\t${t.name}`)
     })
 

@@ -8,7 +8,7 @@ import { listProjectCollections } from '../../src/core/project-scan.js'
 import { parseFieldSpecs } from '../../src/core/fields.js'
 
 async function project(template: 'blank' | 'corporate' = 'blank') {
-  const cwd = mkdtempSync(join(tmpdir(), 'paycms-scan-'))
+  const cwd = mkdtempSync(join(tmpdir(), 'grovekit-scan-'))
   await runCreate({ name: 'site', template, db: 'postgres', pm: 'npm', yes: true, install: false, cwd })
   const root = join(cwd, 'site')
   return { root, config: join(root, 'src/payload.config.ts') }

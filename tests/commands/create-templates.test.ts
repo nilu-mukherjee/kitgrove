@@ -21,7 +21,7 @@ const CORPORATE_FILES = [
 ]
 
 async function scaffold(template: TemplateName, db: Database) {
-  const cwd = mkdtempSync(join(tmpdir(), 'paycms-tpl-'))
+  const cwd = mkdtempSync(join(tmpdir(), 'grovekit-tpl-'))
   await runCreate({ name: 'site', template, db, pm: 'npm', yes: true, install: false, cwd })
   return join(cwd, 'site')
 }

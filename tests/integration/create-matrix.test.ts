@@ -8,7 +8,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 const repo = join(import.meta.dirname, '..', '..')
 const bin = join(repo, 'dist', 'cli.js')
 
-function paycms(cwd: string, ...args: string[]) {
+function grovekit(cwd: string, ...args: string[]) {
   const r = spawnSync('node', [bin, ...args], { cwd, encoding: 'utf8' })
   return { code: r.status, out: r.stdout, err: r.stderr }
 }
@@ -23,15 +23,15 @@ const combos = (['blank', 'blog', 'corporate'] as const).flatMap((t) =>
 
 describe.each(combos)('built CLI: %s / %s', (template, db) => {
   it('creates a project and generates into it', () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
-    const created = paycms(cwd, 'create', 'site', '--template', template, '--db', db, '--yes', '--no-install')
+    const cwd = mkdtempSync(join(tmpdir(), 'grovekit-int-'))
+    const created = grovekit(cwd, 'create', 'site', '--template', template, '--db', db, '--yes', '--no-install')
     expect(created.code, created.err).toBe(0)
 
     const root = join(cwd, 'site')
-    const gen = paycms(root, 'generate', 'collection', 'Notes')
+    const gen = grovekit(root, 'generate', 'collection', 'Notes')
     expect(gen.code, gen.err).toBe(0)
-    expect(paycms(root, 'generate', 'global', 'Site Settings').code).toBe(0)
-    expect(paycms(root, 'generate', 'block', 'Callout').code).toBe(0)
+    expect(grovekit(root, 'generate', 'global', 'Site Settings').code).toBe(0)
+    expect(grovekit(root, 'generate', 'block', 'Callout').code).toBe(0)
 
     const config = readFileSync(join(root, 'src/payload.config.ts'), 'utf8')
     expect(ts.transpileModule(config, { reportDiagnostics: true }).diagnostics).toEqual([])
@@ -40,11 +40,11 @@ describe.each(combos)('built CLI: %s / %s', (template, db) => {
   })
 
   it('refuses a duplicate collection with a readable error', () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
-    paycms(cwd, 'create', 'site', '--template', template, '--db', db, '--yes', '--no-install')
+    const cwd = mkdtempSync(join(tmpdir(), 'grovekit-int-'))
+    grovekit(cwd, 'create', 'site', '--template', template, '--db', db, '--yes', '--no-install')
     const root = join(cwd, 'site')
-    paycms(root, 'generate', 'collection', 'Notes')
-    const again = paycms(root, 'generate', 'collection', 'Notes')
+    grovekit(root, 'generate', 'collection', 'Notes')
+    const again = grovekit(root, 'generate', 'collection', 'Notes')
     expect(again.code).toBe(1)
     expect(again.err).toMatch(/^Error: .*already exists/m)
     expect(again.err).not.toMatch(/at .*\.js:\d+/)
@@ -53,14 +53,14 @@ describe.each(combos)('built CLI: %s / %s', (template, db) => {
 
 describe('built CLI: --fields', () => {
   const scaffold = () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
-    paycms(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
+    const cwd = mkdtempSync(join(tmpdir(), 'grovekit-int-'))
+    grovekit(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
     return join(cwd, 'site')
   }
 
   it('creates a collection with the requested fields', () => {
     const root = scaffold()
-    const r = paycms(root, 'generate', 'collection', 'Case Studies', '--fields', 'client:text!,image:upload:media')
+    const r = grovekit(root, 'generate', 'collection', 'Case Studies', '--fields', 'client:text!,image:upload:media')
     expect(r.code, r.err).toBe(0)
     const file = readFileSync(join(root, 'src/collections/CaseStudies.ts'), 'utf8')
     expect(file).toContain(`name: 'client'`)
@@ -69,15 +69,15 @@ describe('built CLI: --fields', () => {
 
   it('reports a bad field spec without creating anything', () => {
     const root = scaffold()
-    const r = paycms(root, 'generate', 'collection', 'Notes', '--fields', 'a:wat')
+    const r = grovekit(root, 'generate', 'collection', 'Notes', '--fields', 'a:wat')
     expect(r.code).toBe(1)
     expect(r.err).toMatch(/Unknown field type "wat"/)
-    expect(paycms(root, 'generate', 'collection', 'Notes').code).toBe(0)
+    expect(grovekit(root, 'generate', 'collection', 'Notes').code).toBe(0)
   })
 
   it('does not prompt when stdin is not a TTY', () => {
     const root = scaffold()
-    const r = paycms(root, 'generate', 'collection', 'Plain')
+    const r = grovekit(root, 'generate', 'collection', 'Plain')
     expect(r.code, r.err).toBe(0)
     expect(readFileSync(join(root, 'src/collections/Plain.ts'), 'utf8')).toContain(`name: 'title'`)
   })
@@ -85,14 +85,14 @@ describe('built CLI: --fields', () => {
 
 describe('built CLI: create collection', () => {
   const scaffold = () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
-    paycms(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
+    const cwd = mkdtempSync(join(tmpdir(), 'grovekit-int-'))
+    grovekit(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
     return join(cwd, 'site')
   }
 
   it('`create collection <name>` works like generate, including field options', () => {
     const root = scaffold()
-    const r = paycms(
+    const r = grovekit(
       root, 'create', 'collection', 'Case Studies',
       '--fields', 'client:text![unique],summary:textarea', '--use-as-title', 'client',
     )
@@ -103,14 +103,14 @@ describe('built CLI: create collection', () => {
   })
 
   it('without a name and without a TTY it explains what is missing', () => {
-    const r = paycms(scaffold(), 'create', 'collection')
+    const r = grovekit(scaffold(), 'create', 'collection')
     expect(r.code).toBe(1)
     expect(r.err).toMatch(/collection name is required/i)
   })
 
   it('`create <name>` still scaffolds a project', () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
-    const r = paycms(cwd, 'create', 'my-app', '--yes', '--no-install')
+    const cwd = mkdtempSync(join(tmpdir(), 'grovekit-int-'))
+    const r = grovekit(cwd, 'create', 'my-app', '--yes', '--no-install')
     expect(r.code, r.err).toBe(0)
     expect(readFileSync(join(cwd, 'my-app/package.json'), 'utf8')).toContain('"name": "my-app"')
   })
@@ -118,17 +118,17 @@ describe('built CLI: create collection', () => {
 
 describe('built CLI: access', () => {
   it('sets and shows rules, and generate --access writes them', () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
-    paycms(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
+    const cwd = mkdtempSync(join(tmpdir(), 'grovekit-int-'))
+    grovekit(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
     const root = join(cwd, 'site')
-    expect(paycms(root, 'generate', 'collection', 'Notes', '--access', 'read=public,delete=tenant-admin').code).toBe(0)
-    expect(paycms(root, 'access', 'set', 'notes', '--update', 'tenant-editor').code).toBe(0)
-    const shown = paycms(root, 'access', 'show', 'notes')
+    expect(grovekit(root, 'generate', 'collection', 'Notes', '--access', 'read=public,delete=tenant-admin').code).toBe(0)
+    expect(grovekit(root, 'access', 'set', 'notes', '--update', 'tenant-editor').code).toBe(0)
+    const shown = grovekit(root, 'access', 'show', 'notes')
     expect(shown.code, shown.err).toBe(0)
     expect(shown.out).toMatch(/read\s+public/)
     expect(shown.out).toMatch(/update\s+tenant-editor/)
     expect(shown.out).toMatch(/delete\s+tenant-admin/)
-    const bad = paycms(root, 'access', 'set', 'notes', '--read', 'nope')
+    const bad = grovekit(root, 'access', 'set', 'notes', '--read', 'nope')
     expect(bad.code).toBe(1)
     expect(bad.err).toMatch(/Unknown access rule "nope"/)
   })
@@ -145,8 +145,8 @@ function pty(root: string, scenario: 'navigate' | 'ctrl-c') {
 
 describe('built CLI: TUI in a real terminal', () => {
   const scaffold = () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'paycms-pty-'))
-    paycms(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
+    const cwd = mkdtempSync(join(tmpdir(), 'grovekit-pty-'))
+    grovekit(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
     return join(cwd, 'site')
   }
 
@@ -163,13 +163,13 @@ describe('built CLI: TUI in a real terminal', () => {
 
 describe('built CLI: outside a project', () => {
   it.each([['tenant', 'list'], ['doctor'], ['dev'], ['generate', 'collection', 'x']])('%s fails clearly', (...args) => {
-    const r = paycms(mkdtempSync(join(tmpdir(), 'paycms-none-')), ...args)
+    const r = grovekit(mkdtempSync(join(tmpdir(), 'grovekit-none-')), ...args)
     expect(r.code).toBe(1)
     expect(r.err).toMatch(/Not inside a Payload project/)
   })
 
   it('rejects a bad template name', () => {
-    const r = paycms(mkdtempSync(join(tmpdir(), 'paycms-bad-')), 'create', 'x', '-t', 'nope', '-d', 'postgres', '-y', '--no-install')
+    const r = grovekit(mkdtempSync(join(tmpdir(), 'grovekit-bad-')), 'create', 'x', '-t', 'nope', '-d', 'postgres', '-y', '--no-install')
     expect(r.code).toBe(1)
     expect(r.err).toMatch(/Unknown template "nope"/)
   })

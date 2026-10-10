@@ -6,7 +6,7 @@ import { runCreate } from '../../src/commands/create.js'
 import { CliError } from '../../src/core/errors.js'
 import { registerInConfig } from '../../src/core/codemod.js'
 
-const cwd = () => mkdtempSync(join(tmpdir(), 'paycms-create-'))
+const cwd = () => mkdtempSync(join(tmpdir(), 'grovekit-create-'))
 
 const BLANK_FILES = [
   '.env.example',

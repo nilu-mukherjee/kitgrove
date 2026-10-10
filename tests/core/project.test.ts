@@ -6,7 +6,7 @@ import { CliError } from '../../src/core/errors.js'
 import { findProject, requireProject } from '../../src/core/project.js'
 
 function makeProject(opts: { lock?: string; dir?: string; configIn?: 'src' | 'root' } = {}) {
-  const base = mkdtempSync(join(tmpdir(), opts.dir ?? 'paycms-'))
+  const base = mkdtempSync(join(tmpdir(), opts.dir ?? 'grovekit-'))
   writeFileSync(join(base, 'package.json'), JSON.stringify({ dependencies: { payload: '^3.0.0' } }))
   if (opts.configIn === 'root') writeFileSync(join(base, 'payload.config.ts'), 'export default {}')
   else {
@@ -42,18 +42,18 @@ describe('findProject', () => {
   })
 
   it('returns null outside a project', () => {
-    expect(findProject(mkdtempSync(join(tmpdir(), 'paycms-empty-')))).toBeNull()
+    expect(findProject(mkdtempSync(join(tmpdir(), 'grovekit-empty-')))).toBeNull()
   })
 
   it('works for a path containing spaces', () => {
-    const root = makeProject({ dir: 'paycms with space ' })
+    const root = makeProject({ dir: 'grovekit with space ' })
     expect(findProject(root)?.root).toBe(root)
   })
 })
 
 describe('requireProject', () => {
   it('throws a CliError outside a project', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'paycms-empty-'))
+    const dir = mkdtempSync(join(tmpdir(), 'grovekit-empty-'))
     expect(() => requireProject(dir)).toThrow(CliError)
     expect(() => requireProject(dir)).toThrow(/Not inside a Payload project/)
   })
