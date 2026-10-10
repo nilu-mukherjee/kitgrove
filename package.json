@@ -1,6 +1,6 @@
 {
   "name": "kitgrove",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI to create and manage multi-tenant Payload CMS projects",
   "type": "module",
   "bin": {
