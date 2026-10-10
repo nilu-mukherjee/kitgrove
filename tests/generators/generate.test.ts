@@ -141,6 +141,34 @@ describe('generate with fields', () => {
   })
 })
 
+describe('generate with useAsTitle', () => {
+  it('uses the requested top-level field', async () => {
+    const root = await project()
+    await runGenerate('collection', 'books', {
+      cwd: root,
+      fields: parseFieldSpecs('title:text!,isbn:text[unique]'),
+      useAsTitle: 'isbn',
+    })
+    expect(read(root, 'src/collections/Books.ts')).toContain(`useAsTitle: 'isbn'`)
+  })
+
+  it('rejects a field that is not defined, writing nothing', async () => {
+    const root = await project()
+    await expect(
+      runGenerate('collection', 'books', { cwd: root, fields: parseFieldSpecs('name:text'), useAsTitle: 'title' }),
+    ).rejects.toThrow(/useAsTitle "title".*name/)
+    expect(existsSync(join(root, 'src/collections/Books.ts'))).toBe(false)
+  })
+
+  it('allows id and the default title field', async () => {
+    const root = await project()
+    await runGenerate('collection', 'a', { cwd: root, fields: parseFieldSpecs('n:number'), useAsTitle: 'id' })
+    await runGenerate('collection', 'b', { cwd: root, useAsTitle: 'title' })
+    expect(read(root, 'src/collections/A.ts')).toContain(`useAsTitle: 'id'`)
+    expect(read(root, 'src/collections/B.ts')).toContain(`useAsTitle: 'title'`)
+  })
+})
+
 describe('generate with container fields', () => {
   it('imports referenced blocks and renders nested fields', async () => {
     const root = await project()

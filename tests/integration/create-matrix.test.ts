@@ -83,6 +83,39 @@ describe('built CLI: --fields', () => {
   })
 })
 
+describe('built CLI: create collection', () => {
+  const scaffold = () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
+    paycms(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
+    return join(cwd, 'site')
+  }
+
+  it('`create collection <name>` works like generate, including field options', () => {
+    const root = scaffold()
+    const r = paycms(
+      root, 'create', 'collection', 'Case Studies',
+      '--fields', 'client:text![unique],summary:textarea', '--use-as-title', 'client',
+    )
+    expect(r.code, r.err).toBe(0)
+    const file = readFileSync(join(root, 'src/collections/CaseStudies.ts'), 'utf8')
+    expect(file).toContain(`useAsTitle: 'client'`)
+    expect(file).toContain('unique: true')
+  })
+
+  it('without a name and without a TTY it explains what is missing', () => {
+    const r = paycms(scaffold(), 'create', 'collection')
+    expect(r.code).toBe(1)
+    expect(r.err).toMatch(/collection name is required/i)
+  })
+
+  it('`create <name>` still scaffolds a project', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
+    const r = paycms(cwd, 'create', 'my-app', '--yes', '--no-install')
+    expect(r.code, r.err).toBe(0)
+    expect(readFileSync(join(cwd, 'my-app/package.json'), 'utf8')).toContain('"name": "my-app"')
+  })
+})
+
 describe('built CLI: outside a project', () => {
   it.each([['tenant', 'list'], ['doctor'], ['dev'], ['generate', 'collection', 'x']])('%s fails clearly', (...args) => {
     const r = paycms(mkdtempSync(join(tmpdir(), 'paycms-none-')), ...args)

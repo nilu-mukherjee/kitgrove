@@ -29,11 +29,26 @@ export const FIELD_TYPES = [
 
 export type FieldType = (typeof FIELD_TYPES)[number]
 
+export type DefaultValue = string | number | boolean
+
 export interface FieldSpec {
   /** Field name. For `collapsible` it is the label; for `row`/`tabs` it is only an identifier. */
   name: string
   type: FieldType
   required: boolean
+  unique?: boolean
+  index?: boolean
+  /** Static default. For `date`, the string `now` means "the current time". */
+  defaultValue?: DefaultValue
+  label?: string
+  description?: string
+  position?: 'sidebar' | 'main'
+  readOnly?: boolean
+  hasMany?: boolean
+  min?: number
+  max?: number
+  minLength?: number
+  maxLength?: number
   /** Target collection slug for `upload` / `relationship`. */
   relationTo?: string
   /** Option values for `select` / `radio`. */
@@ -47,45 +62,134 @@ export interface FieldSpec {
 }
 
 const RESERVED_NAMES = new Set(['id', 'createdAt', 'updatedAt', 'tenant'])
-const SYNTAX = 'name:type[:arg][(fields)][!]'
+const SYNTAX = 'name:type[:arg][(fields)][!][[option,key=value]]'
 
-const HAS_FIELDS: ReadonlySet<FieldType> = new Set(['array', 'group', 'row', 'collapsible'])
-const NO_REQUIRED: ReadonlySet<FieldType> = new Set(['collapsible', 'group', 'join', 'row', 'tabs', 'ui'])
-const TAKES_OPTIONS: ReadonlySet<FieldType> = new Set(['select', 'radio'])
-const TAKES_RELATION: ReadonlySet<FieldType> = new Set(['upload', 'relationship'])
+const set = (...t: FieldType[]): ReadonlySet<FieldType> => new Set(t)
+const HAS_FIELDS = set('array', 'group', 'row', 'collapsible')
+const NO_REQUIRED = set('collapsible', 'group', 'join', 'row', 'tabs', 'ui')
+const TAKES_OPTIONS = set('select', 'radio')
+const TAKES_RELATION = set('upload', 'relationship')
+const NO_ADMIN = set('row', 'tabs', 'ui')
+
+const SCALAR = set('text', 'textarea', 'email', 'number', 'date', 'select', 'radio', 'relationship', 'code')
+
+/** Which field types accept which option (taken from Payload 3.90's field config types). */
+export const OPTION_SUPPORT = {
+  unique: SCALAR,
+  index: set(...SCALAR, 'checkbox', 'upload'),
+  defaultValue: set('text', 'textarea', 'email', 'code', 'number', 'checkbox', 'date', 'select', 'radio'),
+  label: set(...FIELD_TYPES.filter((t) => !['row', 'tabs', 'collapsible', 'ui'].includes(t))),
+  description: set(...FIELD_TYPES.filter((t) => !NO_ADMIN.has(t))),
+  position: set(...FIELD_TYPES.filter((t) => !NO_ADMIN.has(t))),
+  readOnly: set(...FIELD_TYPES.filter((t) => !NO_ADMIN.has(t))),
+  hasMany: set('text', 'number', 'select', 'relationship', 'upload'),
+  min: set('number'),
+  max: set('number'),
+  minLength: set('text', 'textarea', 'code'),
+  maxLength: set('text', 'textarea', 'code'),
+} as const
+
+export type OptionKey = keyof typeof OPTION_SUPPORT
+
+export const supportsOption = (type: FieldType, option: OptionKey): boolean => OPTION_SUPPORT[option].has(type)
 
 /** Types for which the `Required?` question makes sense. */
 export const supportsRequired = (type: FieldType): boolean => !NO_REQUIRED.has(type)
 
-/** Splits on `sep` outside parentheses; throws on unbalanced parentheses. */
-function splitTop(input: string, sep = ','): string[] {
+/** Splits on `,` outside parentheses and brackets; throws on unbalanced ones. */
+function splitTop(input: string): string[] {
   const parts: string[] = []
   let depth = 0
   let current = ''
   for (const ch of input) {
-    if (ch === '(') depth++
-    if (ch === ')') depth--
-    if (depth < 0) throw new CliError(`Unbalanced parentheses in "${input}".`)
-    if (ch === sep && depth === 0) {
+    if (ch === '(' || ch === '[') depth++
+    if (ch === ')' || ch === ']') depth--
+    if (depth < 0) throw new CliError(`Unbalanced parentheses or brackets in "${input}".`)
+    if (ch === ',' && depth === 0) {
       parts.push(current)
       current = ''
     } else current += ch
   }
-  if (depth !== 0) throw new CliError(`Unbalanced parentheses in "${input}".`)
+  if (depth !== 0) throw new CliError(`Unbalanced parentheses or brackets in "${input}".`)
   parts.push(current)
   return parts.map((s) => s.trim()).filter(Boolean)
 }
 
+const BOOLEAN_OPTIONS = ['unique', 'index', 'readOnly', 'hasMany'] as const
+const NUMBER_OPTIONS = ['min', 'max', 'minLength', 'maxLength'] as const
+const STRING_OPTIONS = ['label', 'description', 'position', 'default'] as const
+
+function applyOptions(spec: FieldSpec, opts: string): void {
+  for (const raw of opts.split(',').map((s) => s.trim()).filter(Boolean)) {
+    const eq = raw.indexOf('=')
+    const key = (eq === -1 ? raw : raw.slice(0, eq)).trim()
+    const value = eq === -1 ? undefined : raw.slice(eq + 1).trim()
+    const at = `Field "${spec.name}"`
+
+    if ((BOOLEAN_OPTIONS as readonly string[]).includes(key)) {
+      if (value !== undefined && value !== 'true' && value !== 'false') {
+        throw new CliError(`${at}: ${key} must be true or false.`)
+      }
+      ;(spec as unknown as Record<string, unknown>)[key] = value !== 'false'
+    } else if ((NUMBER_OPTIONS as readonly string[]).includes(key)) {
+      const n = Number(value)
+      if (value === undefined || value === '' || !Number.isFinite(n)) throw new CliError(`${at}: ${key} must be a number.`)
+      ;(spec as unknown as Record<string, unknown>)[key] = n
+    } else if ((STRING_OPTIONS as readonly string[]).includes(key)) {
+      if (value === undefined || value === '') throw new CliError(`${at}: ${key} needs a value, e.g. ${key}=...`)
+      if (key === 'position') {
+        if (value !== 'sidebar' && value !== 'main') throw new CliError(`${at}: position must be sidebar or main.`)
+        spec.position = value
+      } else if (key === 'default') {
+        spec.defaultValue = parseDefault(spec, value)
+      } else {
+        ;(spec as unknown as Record<string, unknown>)[key] = value
+      }
+    } else {
+      throw new CliError(`Unknown option "${key}" for field "${spec.name}".`)
+    }
+  }
+}
+
+function parseDefault(spec: FieldSpec, value: string): DefaultValue {
+  const at = `Field "${spec.name}"`
+  switch (spec.type) {
+    case 'number': {
+      const n = Number(value)
+      if (!Number.isFinite(n)) throw new CliError(`${at}: default "${value}" is not a number.`)
+      return n
+    }
+    case 'checkbox':
+      if (value !== 'true' && value !== 'false') throw new CliError(`${at}: default must be true or false.`)
+      return value === 'true'
+    case 'date':
+      if (value !== 'now' && Number.isNaN(Date.parse(value))) {
+        throw new CliError(`${at}: default "${value}" is not a valid date (use now or an ISO date).`)
+      }
+      return value
+    default:
+      return value
+  }
+}
+
 function parseEntry(raw: string): FieldSpec {
-  const required = raw.endsWith('!')
-  const body = required ? raw.slice(0, -1).trim() : raw
+  let rest = raw.trim()
+  let opts = ''
+  if (rest.endsWith(']')) {
+    const open = rest.lastIndexOf('[')
+    if (open === -1) throw new CliError(`Unbalanced parentheses or brackets in "${raw}".`)
+    opts = rest.slice(open + 1, -1)
+    rest = rest.slice(0, open).trim()
+  }
+  const required = rest.endsWith('!')
+  const body = required ? rest.slice(0, -1).trim() : rest
   const open = body.indexOf('(')
   if (open !== -1 && !body.endsWith(')')) throw new CliError(`Field "${raw}" has unbalanced parentheses.`)
   const head = open === -1 ? body : body.slice(0, open)
   const children = open === -1 ? undefined : body.slice(open + 1, -1)
 
-  const [name, rawType, ...rest] = head.split(':').map((s) => s.trim())
-  const arg = rest.join(':')
+  const [name, rawType, ...argParts] = head.split(':').map((s) => s.trim())
+  const arg = argParts.join(':')
   if (!name || !rawType) throw new CliError(`Field "${raw}" must be written ${SYNTAX}.`)
 
   const type = FIELD_TYPES.find((t) => t.toLowerCase() === rawType.toLowerCase())
@@ -115,10 +219,42 @@ function parseEntry(raw: string): FieldSpec {
       })
     } else spec.fields = [{ name: '_', type: 'text', required: false }] // flagged by validateSpecs
   }
+  if (opts) applyOptions(spec, opts)
   return spec
 }
 
-/** Checks names, duplicates, required support and per-type arguments; throws CliError. Recursive. */
+function validateOptions(f: FieldSpec): void {
+  const at = `Field "${f.name}" (${f.type})`
+  const given: [OptionKey, unknown][] = [
+    ['unique', f.unique],
+    ['index', f.index],
+    ['defaultValue', f.defaultValue],
+    ['label', f.label],
+    ['description', f.description],
+    ['position', f.position],
+    ['readOnly', f.readOnly],
+    ['hasMany', f.hasMany],
+    ['min', f.min],
+    ['max', f.max],
+    ['minLength', f.minLength],
+    ['maxLength', f.maxLength],
+  ]
+  for (const [option, value] of given) {
+    if (value === undefined || (value === false && option !== 'defaultValue')) continue
+    if (!supportsOption(f.type, option)) {
+      throw new CliError(`${at} does not support ${option === 'defaultValue' ? 'default' : option}.`)
+    }
+  }
+  if (f.hasMany) {
+    if (f.unique) throw new CliError(`${at}: unique cannot be combined with hasMany.`)
+    if (f.defaultValue !== undefined) throw new CliError(`${at}: default cannot be combined with hasMany.`)
+  }
+  if (f.options && f.defaultValue !== undefined && !f.options.includes(String(f.defaultValue))) {
+    throw new CliError(`${at}: default must be one of ${f.options.join(', ')}.`)
+  }
+}
+
+/** Checks names, duplicates, required support, options and per-type arguments; throws CliError. Recursive. */
 export function validateSpecs(specs: FieldSpec[]): void {
   const seen = new Set<string>()
   for (const f of specs) {
@@ -130,6 +266,8 @@ export function validateSpecs(specs: FieldSpec[]): void {
     if (f.required && NO_REQUIRED.has(f.type)) {
       throw new CliError(`Field "${f.name}" (${f.type}) does not support required.`)
     }
+    validateOptions(f)
+
     if (TAKES_RELATION.has(f.type)) {
       if (!f.relationTo) {
         throw new CliError(`Field "${f.name}" (${f.type}) needs a target collection, e.g. ${f.name}:${f.type}:media.`)
@@ -165,9 +303,9 @@ export function validateSpecs(specs: FieldSpec[]): void {
 }
 
 /**
- * Parses `"title:text!,links:array(label:text!,url:text!),status:select:draft|live"`.
- * `!` marks required; `:arg` is a target slug, `a|b` options or `collection.field` (join);
- * `(…)` holds nested fields, `Label(…)` tabs, or block names for `blocks`.
+ * Parses `"title:text![unique],links:array(label:text!,url:text!),status:select:draft|live[default=draft]"`.
+ * `!` marks required; `:arg` is a target slug, `a|b` options or `collection.field` (join); `(…)` holds
+ * nested fields, `Label(…)` tabs, or block names; a trailing `[unique,default=x,label=Y,…]` sets options.
  */
 export function parseFieldSpecs(input: string): FieldSpec[] {
   const specs = splitTop(input).map(parseEntry)
@@ -176,6 +314,11 @@ export function parseFieldSpecs(input: string): FieldSpec[] {
 }
 
 const quote = (s: string) => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+
+function renderDefault(f: FieldSpec): string {
+  if (f.type === 'date' && f.defaultValue === 'now') return '() => new Date().toISOString()'
+  return typeof f.defaultValue === 'string' ? quote(f.defaultValue) : String(f.defaultValue)
+}
 
 function renderField(f: FieldSpec, indent: number): string[] {
   const pad = ' '.repeat(indent)
@@ -207,12 +350,28 @@ function renderField(f: FieldSpec, indent: number): string[] {
     lines.push(`${inner}],`)
   } else {
     lines.push(`${inner}name: ${quote(f.name)},`, `${inner}type: ${quote(f.type)},`)
+    if (f.label) lines.push(`${inner}label: ${quote(f.label)},`)
     if (f.required) lines.push(`${inner}required: true,`)
+    if (f.unique) lines.push(`${inner}unique: true,`)
+    if (f.index) lines.push(`${inner}index: true,`)
+    if (f.defaultValue !== undefined) lines.push(`${inner}defaultValue: ${renderDefault(f)},`)
+    if (f.hasMany) lines.push(`${inner}hasMany: true,`)
+    if (f.min !== undefined) lines.push(`${inner}min: ${f.min},`)
+    if (f.max !== undefined) lines.push(`${inner}max: ${f.max},`)
+    if (f.minLength !== undefined) lines.push(`${inner}minLength: ${f.minLength},`)
+    if (f.maxLength !== undefined) lines.push(`${inner}maxLength: ${f.maxLength},`)
     if (f.relationTo) lines.push(`${inner}relationTo: ${quote(f.relationTo)},`)
     if (f.options) lines.push(`${inner}options: [${f.options.map(quote).join(', ')}],`)
     if (f.join) lines.push(`${inner}collection: ${quote(f.join.collection)},`, `${inner}on: ${quote(f.join.on)},`)
     if (f.blocks) lines.push(`${inner}blocks: [${f.blocks.map((b) => toPascal(toSlug(b))).join(', ')}],`)
     if (f.fields) lines.push(...nested(f.fields, indent + 2))
+    if (f.description || f.position || f.readOnly) {
+      lines.push(`${inner}admin: {`)
+      if (f.description) lines.push(`${inner}  description: ${quote(f.description)},`)
+      if (f.position) lines.push(`${inner}  position: ${quote(f.position)},`)
+      if (f.readOnly) lines.push(`${inner}  readOnly: true,`)
+      lines.push(`${inner}},`)
+    }
   }
   lines.push(`${pad}},`)
   return lines

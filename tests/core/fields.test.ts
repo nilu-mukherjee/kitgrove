@@ -200,3 +200,97 @@ describe('all Payload field types', () => {
     ])
   })
 })
+
+describe('field options', () => {
+  it('parses unique, index, default, label, description and position', () => {
+    const [f] = parseFieldSpecs(
+      'client:text![unique,index,default=Acme,label=Client name,description=Who it is for,position=sidebar,minLength=2,maxLength=80]',
+    )
+    expect(f).toMatchObject({
+      name: 'client',
+      required: true,
+      unique: true,
+      index: true,
+      defaultValue: 'Acme',
+      label: 'Client name',
+      description: 'Who it is for',
+      position: 'sidebar',
+      minLength: 2,
+      maxLength: 80,
+    })
+  })
+
+  it('converts defaults by type', () => {
+    expect(parseFieldSpecs('n:number[default=1.5,min=0,max=10]')[0]).toMatchObject({ defaultValue: 1.5, min: 0, max: 10 })
+    expect(parseFieldSpecs('c:checkbox[default=true]')[0]).toMatchObject({ defaultValue: true })
+    expect(parseFieldSpecs('c:checkbox[default=false]')[0]).toMatchObject({ defaultValue: false })
+    expect(parseFieldSpecs('d:date[default=now]')[0]).toMatchObject({ defaultValue: 'now' })
+    expect(parseFieldSpecs('s:select:draft|live[default=draft]')[0]).toMatchObject({ defaultValue: 'draft' })
+  })
+
+  it('parses hasMany and readOnly flags without values', () => {
+    expect(parseFieldSpecs('tags:text[hasMany]')[0]).toMatchObject({ hasMany: true })
+    expect(parseFieldSpecs('r:radio:a|b[readOnly,default=a]')[0]).toMatchObject({ readOnly: true, defaultValue: 'a' })
+  })
+
+  it('allows options on containers and keeps brackets out of the comma split', () => {
+    const specs = parseFieldSpecs('seo:group(a:text[unique],b:text)[label=SEO],z:text')
+    expect(specs.map((s) => s.name)).toEqual(['seo', 'z'])
+    expect(specs[0]).toMatchObject({ label: 'SEO' })
+    expect(specs[0]!.fields![0]).toMatchObject({ unique: true })
+  })
+
+  it.each([
+    ['a:checkbox[unique]', /does not support unique/],
+    ['a:text[min=1]', /does not support min/],
+    ['a:number[minLength=1]', /does not support minLength/],
+    ['a:text[nope=1]', /Unknown option "nope"/],
+    ['a:select:x|y[default=z]', /default must be one of/],
+    ['a:number[default=abc]', /not a number/],
+    ['a:checkbox[default=maybe]', /true or false/],
+    ['a:date[default=nope]', /not a valid date/],
+    ['a:text[hasMany,unique]', /cannot be combined with hasMany/],
+    ['a:text[hasMany,default=x]', /cannot be combined with hasMany/],
+    ['a:text[position=left]', /sidebar or main/],
+    ['a:row(b:text)[description=x]', /does not support description/],
+    ['a:text[min', /Unbalanced/],
+    ['a:number[min=abc]', /min must be a number/],
+  ])('rejects %j', (input, message) => {
+    expect(() => parseFieldSpecs(input)).toThrow(CliError)
+    expect(() => parseFieldSpecs(input)).toThrow(message)
+  })
+
+  it('renders every option as valid TypeScript', () => {
+    const specs = parseFieldSpecs(
+      [
+        'client:text![unique,index,default=Acme,label=Client name,description=Who it is for,position=sidebar,minLength=2]',
+        'qty:number[default=1,min=0,max=10]',
+        'done:checkbox[default=true]',
+        'when:date[default=now]',
+        'tags:text[hasMany]',
+        'ro:text[readOnly]',
+      ].join(','),
+    )
+    const out = renderFields(specs)
+    expect(ts.transpileModule(`const f = [\n${out}\n]`, { reportDiagnostics: true }).diagnostics).toEqual([])
+    for (const part of [
+      'unique: true,',
+      'index: true,',
+      `defaultValue: 'Acme',`,
+      `label: 'Client name',`,
+      `description: 'Who it is for',`,
+      `position: 'sidebar',`,
+      'minLength: 2,',
+      'defaultValue: 1,',
+      'min: 0,',
+      'max: 10,',
+      'defaultValue: true,',
+      'defaultValue: () => new Date().toISOString(),',
+      'hasMany: true,',
+      'readOnly: true,',
+    ]) {
+      expect(out, part).toContain(part)
+    }
+    expect(out).toMatch(/admin: \{\s+description: 'Who it is for',\s+position: 'sidebar',/)
+  })
+})

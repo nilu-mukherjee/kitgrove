@@ -7,6 +7,7 @@ import { run } from '../core/exec.js'
 import { templatesDir } from '../core/paths.js'
 import type { PackageManager } from '../core/project.js'
 import { renderTemplateDir, toSlug } from '../core/template.js'
+import { KINDS, handleGenerate, type GenerateFlags } from './generate.js'
 
 export const TEMPLATES = ['blank', 'blog', 'corporate'] as const
 export const DATABASES = ['postgres', 'mongodb'] as const
@@ -106,47 +107,87 @@ function ensure<T>(value: T | symbol): T {
 
 export function registerCreate(program: Command): void {
   program
-    .command('create <name>')
-    .description('Scaffold a multi-tenant Payload project')
+    .command('create [what] [name]')
+    .description(
+      'Scaffold a multi-tenant project (create <name>) or generate code (create collection|global|block|field|hook|access [name])',
+    )
     .option('-t, --template <template>', `project template (${TEMPLATES.join('|')})`)
-    .option('-d, --db <db>', `database (${DATABASES.join('|')})`)
+    .option('-d, --db <db>', `project database (${DATABASES.join('|')})`)
     .option('--pm <pm>', `package manager (${PACKAGE_MANAGERS.join('|')})`)
     .option('-y, --yes', 'accept defaults, no prompts')
     .option('--no-install', 'skip installing dependencies')
     .option('--dry-run', 'list the files that would be created')
-    .action(async (name: string, o: Record<string, string | boolean | undefined>) => {
-      const interactive = !o.yes && process.stdin.isTTY
-      const template =
-        (o.template as TemplateName) ??
-        (interactive
-          ? ensure(
-              await p.select({
-                message: 'Template',
-                options: TEMPLATES.map((value) => ({ value, label: value })),
-              }),
-            )
-          : 'blank')
-      const db =
-        (o.db as Database) ??
-        (interactive
-          ? ensure(
-              await p.select({
-                message: 'Database',
-                options: DATABASES.map((value) => ({ value, label: value })),
-              }),
-            )
-          : 'postgres')
-      const files = await runCreate({
-        name,
-        template,
-        db,
-        pm: (o.pm as PackageManager) ?? detectPackageManager(),
-        yes: Boolean(o.yes),
-        dryRun: Boolean(o.dryRun),
-        install: o.install !== false,
-        cwd: process.cwd(),
-      })
-      if (o.dryRun) console.log(files.map((f) => `  ${f}`).join('\n'))
-      else console.log(`\nCreated ${toSlug(name)}/. Next: cd ${toSlug(name)} && cp .env.example .env && ${detectPackageManager()} run dev`)
+    .option('--fields <spec>', 'fields for collection/global/block, e.g. "title:text![unique]"')
+    .option('--use-as-title <field>', 'collection: field that names a document in the admin')
+    .option('--global-shared', 'collection/global: not tenant-scoped / a real shared global')
+    .option('-f, --force', 'overwrite an existing file')
+    .action(async (what: string | undefined, nameArg: string | undefined, o: Record<string, string | boolean | undefined>) => {
+      const interactive = Boolean(!o.yes && process.stdin.isTTY && process.stdout.isTTY)
+      let first = what
+      if (!first) {
+        if (!interactive) {
+          throw new CliError('Usage: paycms create <project-name>  |  paycms create collection [name]')
+        }
+        const choice = await p.select({
+          message: 'What do you want to create?',
+          options: ['project', ...KINDS].map((value) => ({ value, label: value })),
+        })
+        ensure(choice)
+        first = String(choice)
+      }
+
+      if ((KINDS as readonly string[]).includes(first)) {
+        await handleGenerate(first, nameArg, o as GenerateFlags)
+        return
+      }
+
+      // `paycms create project [name]` is accepted too; otherwise the first argument is the name.
+      let name = first === 'project' ? nameArg : first
+      if (!name) {
+        if (!interactive) throw new CliError('A project name is required: paycms create <name>.')
+        name = String(ensure(await p.text({ message: 'Project name', placeholder: 'my-sites' })) ?? '').trim()
+        if (!name) throw new CliError('A project name is required.')
+      }
+      await createProject(name, o)
     })
+}
+
+async function createProject(name: string, o: Record<string, string | boolean | undefined>): Promise<void> {
+  const interactive = Boolean(!o.yes && process.stdin.isTTY && process.stdout.isTTY)
+  const template =
+    (o.template as TemplateName) ??
+    (interactive
+      ? ensure(
+          await p.select({
+            message: 'Template',
+            options: TEMPLATES.map((value) => ({ value, label: value })),
+          }),
+        )
+      : 'blank')
+  const db =
+    (o.db as Database) ??
+    (interactive
+      ? ensure(
+          await p.select({
+            message: 'Database',
+            options: DATABASES.map((value) => ({ value, label: value })),
+          }),
+        )
+      : 'postgres')
+  const files = await runCreate({
+    name,
+    template,
+    db,
+    pm: (o.pm as PackageManager) ?? detectPackageManager(),
+    yes: Boolean(o.yes),
+    dryRun: Boolean(o.dryRun),
+    install: o.install !== false,
+    cwd: process.cwd(),
+  })
+  if (o.dryRun) console.log(files.map((f) => `  ${f}`).join('\n'))
+  else {
+    console.log(
+      `\nCreated ${toSlug(name)}/. Next: cd ${toSlug(name)} && cp .env.example .env && ${detectPackageManager()} run dev`,
+    )
+  }
 }
