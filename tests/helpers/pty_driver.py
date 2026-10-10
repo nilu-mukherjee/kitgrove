@@ -1,12 +1,16 @@
 """Drives the built grovekit TUI in a pseudo-terminal and prints a JSON summary.
 
 usage: python3 -I pty_driver.py <path to dist/cli.js> <project dir> navigate|ctrl-c
+
+Keys are sent only after the screen shows the text they depend on (never on fixed timers), so the
+result does not depend on how fast the machine starts Node.
 """
 import fcntl
 import json
 import os
 import pty
 import select
+import signal
 import struct
 import sys
 import termios
@@ -21,42 +25,83 @@ fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', 30, 100, 0, 0))
 log = b''
 
 
-def drain(t):
+def read_for(seconds):
     global log
-    end = time.time() + t
+    end = time.time() + seconds
     while time.time() < end:
         r, _, _ = select.select([fd], [], [], 0.05)
         if r:
             try:
-                log += os.read(fd, 65536)
+                chunk = os.read(fd, 65536)
             except OSError:
                 return
+            if not chunk:
+                return
+            log += chunk
 
 
-def send(keys, wait=0.6):
+def quiet(quiet_for=0.7, max_wait=25.0):
+    """Reads until the terminal has produced no output for `quiet_for` seconds (the screen has settled).
+
+    Ink redraws only what changed, so waiting for text to reappear is unreliable; waiting for
+    quiescence works on any machine regardless of how long Node takes to start or render.
+    """
+    end = time.time() + max_wait
+    seen = len(log)
+    last = time.time()
+    while time.time() < end:
+        read_for(0.05)
+        if len(log) != seen:
+            seen = len(log)
+            last = time.time()
+        elif time.time() - last >= quiet_for and seen > 0:
+            return
+
+
+def send(keys, settle=True):
     os.write(fd, keys)
-    drain(wait)
+    if settle:
+        quiet()
 
 
 DOWN, ESC = b'\x1b[B', b'\x1b'
-drain(2.5)
+ok = {}
+
+quiet(1.0, 40.0)  # startup: Node boot, module load, first render
+ok['home'] = b'New collection' in log
 if scenario == 'navigate':
-    send(b'\r', 1.2)  # Collections
+    send(b'\r')  # Collections
+    ok['collections'] = b'TENANT-SCOPED' in log
     send(ESC)
-    for _ in range(7):  # down to Doctor
-        send(DOWN, 0.15)
-    send(b'\r', 2.0)  # Doctor
+    for _ in range(7):  # Collections, New collection, Tenants, Users, Access, Data, Run -> Doctor
+        send(DOWN)
+    send(b'\r')
+    ok['doctor'] = b'dependencies installed' in log
     send(ESC)
-    send(b'q', 1.0)
+    send(b'q', settle=False)
 else:
-    send(b'\x03', 1.0)  # Ctrl+C from Home
-_, status = os.waitpid(pid, 0)
+    send(b'\x03', settle=False)  # Ctrl+C from Home
+
+# Wait for the process to exit; never hang the test run.
+code = -1
+end = time.time() + 15
+while time.time() < end:
+    read_for(0.1)
+    done, status = os.waitpid(pid, os.WNOHANG)
+    if done:
+        code = os.WEXITSTATUS(status) if os.WIFEXITED(status) else -1
+        break
+else:
+    os.kill(pid, signal.SIGKILL)
+    os.waitpid(pid, 0)
+read_for(0.2)
+
 text = log.decode(errors='replace')
 print(json.dumps({
     'enter': '\x1b[?1049h' in text,
     'leave': '\x1b[?1049l' in text,
-    'home': 'New collection' in text,
-    'collections': 'TENANT-SCOPED' in text and 'pages' in text,
-    'doctor': 'dependencies installed' in text,
-    'code': os.WEXITSTATUS(status) if os.WIFEXITED(status) else -1,
+    'home': bool(ok.get('home')),
+    'collections': bool(ok.get('collections')) and 'pages' in text,
+    'doctor': bool(ok.get('doctor')),
+    'code': code,
 }))
