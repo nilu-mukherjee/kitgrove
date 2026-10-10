@@ -63,6 +63,14 @@ describe('runCreate (blank)', () => {
     expect(result).toEqual({ ok: true })
   })
 
+  it('uses field-level access helpers (not collection Access) on the users roles field', async () => {
+    const dir = cwd()
+    await runCreate({ name: 'acme', template: 'blank', db: 'postgres', pm: 'npm', yes: true, install: false, cwd: dir })
+    const users = readFileSync(join(dir, 'acme/src/collections/Users.ts'), 'utf8')
+    expect(users).toMatch(/create:\s*isSuperAdminField/)
+    expect(users).toMatch(/update:\s*isSuperAdminField/)
+  })
+
   it('refuses a non-empty target directory and leaves it untouched', async () => {
     const dir = cwd()
     mkdirSync(join(dir, 'acme'))

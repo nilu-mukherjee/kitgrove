@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
 
-import { hasSuperAdminRole, isSuperAdmin } from '../access/isSuperAdmin'
+import { hasSuperAdminRole, isSuperAdminField } from '../access/isSuperAdmin'
 
 // The `tenants` array (tenant + per-tenant roles) is added by the multi-tenant plugin.
 export const Users: CollectionConfig = {
@@ -19,8 +19,8 @@ export const Users: CollectionConfig = {
       required: true,
       saveToJWT: true,
       access: {
-        create: isSuperAdmin,
-        update: isSuperAdmin,
+        create: isSuperAdminField,
+        update: isSuperAdminField,
       },
       hooks: {
         // The very first user must be able to administer everything.

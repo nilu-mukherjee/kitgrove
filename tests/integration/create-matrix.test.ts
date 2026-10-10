@@ -1,0 +1,66 @@
+import { execFileSync, spawnSync } from 'node:child_process'
+import { readFileSync, mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { ts } from 'ts-morph'
+import { beforeAll, describe, expect, it } from 'vitest'
+
+const repo = join(import.meta.dirname, '..', '..')
+const bin = join(repo, 'dist', 'cli.js')
+
+function paycms(cwd: string, ...args: string[]) {
+  const r = spawnSync('node', [bin, ...args], { cwd, encoding: 'utf8' })
+  return { code: r.status, out: r.stdout, err: r.stderr }
+}
+
+beforeAll(() => {
+  execFileSync('npm', ['run', 'build', '--silent'], { cwd: repo, stdio: 'pipe' })
+}, 120_000)
+
+const combos = (['blank', 'blog', 'corporate'] as const).flatMap((t) =>
+  (['postgres', 'mongodb'] as const).map((d) => [t, d] as const),
+)
+
+describe.each(combos)('built CLI: %s / %s', (template, db) => {
+  it('creates a project and generates into it', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
+    const created = paycms(cwd, 'create', 'site', '--template', template, '--db', db, '--yes', '--no-install')
+    expect(created.code, created.err).toBe(0)
+
+    const root = join(cwd, 'site')
+    const gen = paycms(root, 'generate', 'collection', 'Notes')
+    expect(gen.code, gen.err).toBe(0)
+    expect(paycms(root, 'generate', 'global', 'Site Settings').code).toBe(0)
+    expect(paycms(root, 'generate', 'block', 'Callout').code).toBe(0)
+
+    const config = readFileSync(join(root, 'src/payload.config.ts'), 'utf8')
+    expect(ts.transpileModule(config, { reportDiagnostics: true }).diagnostics).toEqual([])
+    expect(config).toMatch(/\bNotes\b/)
+    expect(config).toMatch(/'site-settings': \{\s*isGlobal: true\s*\}/)
+  })
+
+  it('refuses a duplicate collection with a readable error', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'paycms-int-'))
+    paycms(cwd, 'create', 'site', '--template', template, '--db', db, '--yes', '--no-install')
+    const root = join(cwd, 'site')
+    paycms(root, 'generate', 'collection', 'Notes')
+    const again = paycms(root, 'generate', 'collection', 'Notes')
+    expect(again.code).toBe(1)
+    expect(again.err).toMatch(/^Error: .*already exists/m)
+    expect(again.err).not.toMatch(/at .*\.js:\d+/)
+  })
+})
+
+describe('built CLI: outside a project', () => {
+  it.each([['tenant', 'list'], ['doctor'], ['dev'], ['generate', 'collection', 'x']])('%s fails clearly', (...args) => {
+    const r = paycms(mkdtempSync(join(tmpdir(), 'paycms-none-')), ...args)
+    expect(r.code).toBe(1)
+    expect(r.err).toMatch(/Not inside a Payload project/)
+  })
+
+  it('rejects a bad template name', () => {
+    const r = paycms(mkdtempSync(join(tmpdir(), 'paycms-bad-')), 'create', 'x', '-t', 'nope', '-d', 'postgres', '-y', '--no-install')
+    expect(r.code).toBe(1)
+    expect(r.err).toMatch(/Unknown template "nope"/)
+  })
+})
