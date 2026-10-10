@@ -201,3 +201,7 @@ npm run test:smoke       # slow: installs a generated project, generates types a
 Layout: `src/commands` (thin command handlers), `src/core` (project detection, template rendering,
 ts-morph config codemod, env, Payload loading), `templates/projects` (blank → blog → corporate layers)
 and `templates/snippets` (generator output).
+
+## License
+
+[MIT](LICENSE)
