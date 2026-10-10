@@ -15,6 +15,7 @@ import { Users } from './Users.js'
 import { Collections } from './Collections.js'
 import { CreateProject } from './CreateProject.js'
 import { Doctor } from './Doctor.js'
+import { Headless } from './Headless.js'
 import { Run } from './Run.js'
 import type { Size } from '../components/Frame.js'
 import type { Screen } from '../state/nav.js'
@@ -96,6 +97,8 @@ export function screenTitle(screen: Screen): string {
       return 'Run'
     case 'doctor':
       return 'Doctor'
+    case 'headless':
+      return 'Headless'
   }
 }
 
@@ -150,6 +153,9 @@ export function renderScreen(screen: Screen, ctx: ScreenContext): React.ReactNod
     case 'doctor':
       if (!ctx.project) return <Placeholder nav={ctx.nav} name="Doctor (open a Payload project first)" />
       return <Doctor nav={ctx.nav} project={ctx.project} />
+    case 'headless':
+      if (!ctx.project) return <Placeholder nav={ctx.nav} name="Headless (open a Payload project first)" />
+      return <Headless nav={ctx.nav} project={ctx.project} size={ctx.size} />
     case 'run':
       if (!ctx.project) return <Placeholder nav={ctx.nav} name="Run (open a Payload project first)" />
       return <Run nav={ctx.nav} project={ctx.project} size={ctx.size} />

@@ -161,6 +161,7 @@ with `overrideAccess: true`, like any script holding the database credentials.
 | Data | Pick a collection, page through documents (`[` `]`), filter by tenant (`t`), view, new, edit, delete |
 | Run | `dev`, `build`, `types`, `migrate` with streamed output; `Ctrl+C` stops the process, not the app |
 | Doctor | The same checks as `kitgrove doctor`; `r` re-runs |
+| Headless | Shows what `kitgrove headless` would change, then `y` applies it; `f` also removes files you changed |
 
 Keys: `↑↓`/`jk` move, `Enter` open, `Esc` back, `?` help, `q` quit from Home. Data screens connect to
 the database once, on first use. Needs a terminal of at least 80×24. In the builder: `a` add field, `e`

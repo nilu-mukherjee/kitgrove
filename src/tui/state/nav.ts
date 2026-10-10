@@ -11,6 +11,7 @@ export type Screen =
   | { name: 'data'; collection?: string }
   | { name: 'run' }
   | { name: 'doctor' }
+  | { name: 'headless' }
 
 export type NavAction =
   | { type: 'push'; screen: Screen }

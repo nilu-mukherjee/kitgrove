@@ -24,7 +24,7 @@ describe('App / Home', () => {
     const { lastFrame } = render(<App project={project} cwd="/work/my-site" size={size} />)
     const out = lastFrame()!
     expect(out).toContain('my-site')
-    for (const label of ['Collections', 'New collection', 'Tenants', 'Users', 'Access', 'Data', 'Run', 'Doctor', 'Quit']) {
+    for (const label of ['Collections', 'New collection', 'Tenants', 'Users', 'Access', 'Data', 'Run', 'Doctor', 'Headless', 'Quit']) {
       expect(out, label).toContain(label)
     }
     expect(out).not.toContain('Create project')

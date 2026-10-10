@@ -48,5 +48,16 @@
   "funding": {
     "type": "individual",
     "url": "https://ko-fi.com/nilustack"
-  }
+  },
+  "keywords": [
+    "payload",
+    "payloadcms",
+    "payload-cms",
+    "cms",
+    "headless-cms",
+    "multi-tenant",
+    "cli",
+    "tui",
+    "scaffold"
+  ]
 }

@@ -5,7 +5,7 @@ import { Select, type SelectItem } from '../components/Select.js'
 import type { Screen } from '../state/nav.js'
 import type { ScreenContext } from './index.js'
 
-type Choice = 'collections' | 'new-collection' | 'tenants' | 'users' | 'access' | 'data' | 'run' | 'doctor' | 'create-project' | 'quit'
+type Choice = 'collections' | 'new-collection' | 'tenants' | 'users' | 'access' | 'data' | 'run' | 'doctor' | 'headless' | 'create-project' | 'quit'
 
 const IN_PROJECT: SelectItem<Choice>[] = [
   { value: 'collections', label: 'Collections', hint: 'browse and open' },
@@ -16,6 +16,7 @@ const IN_PROJECT: SelectItem<Choice>[] = [
   { value: 'data', label: 'Data', hint: 'browse and edit documents' },
   { value: 'run', label: 'Run', hint: 'dev, build, types, migrate' },
   { value: 'doctor', label: 'Doctor', hint: 'check the setup' },
+  { value: 'headless', label: 'Headless', hint: 'make it backend only' },
   { value: 'quit', label: 'Quit' },
 ]
 
@@ -32,6 +33,7 @@ const TARGET: Record<Exclude<Choice, 'quit' | 'new-collection'>, Screen> = {
   data: { name: 'data' },
   run: { name: 'run' },
   doctor: { name: 'doctor' },
+  headless: { name: 'headless' },
   'create-project': { name: 'create-project' },
 }
 
