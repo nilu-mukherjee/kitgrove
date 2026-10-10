@@ -85,6 +85,14 @@ describe('registerInConfig', () => {
     expectParses(out)
   })
 
+  it('writes { isGlobal: true } to the plugin map for per-tenant globals', () => {
+    const path = write(FIXTURES.plain)
+    registerInConfig(path, { ...notes, slug: 'header', importName: 'Header', isGlobal: true })
+    const out = readFileSync(path, 'utf8')
+    expect(out).toMatch(/header: \{\s*isGlobal: true\s*\}/)
+    expectParses(out)
+  })
+
   it('does not touch the plugin map for non tenant-scoped collections', () => {
     const path = write(FIXTURES.plain)
     registerInConfig(path, { ...notes, tenantScoped: false })

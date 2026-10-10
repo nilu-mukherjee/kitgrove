@@ -14,6 +14,8 @@ export interface ConfigEdit {
   importName: string
   importPath: string
   tenantScoped?: boolean
+  /** Per-tenant global: one document per tenant, edited like a global. */
+  isGlobal?: boolean
 }
 
 export type CodemodResult = { ok: true } | { ok: false; manualInstructions: string }
@@ -102,7 +104,7 @@ export function registerInConfig(configPath: string, edit: ConfigEdit): CodemodR
     const has = pluginMap
       .getProperties()
       .some((p) => Node.isPropertyAssignment(p) && p.getName().replace(/['"]/g, '') === edit.slug)
-    if (!has) pluginMap.addPropertyAssignment({ name, initializer: '{}' })
+    if (!has) pluginMap.addPropertyAssignment({ name, initializer: edit.isGlobal ? '{ isGlobal: true }' : '{}' })
   }
 
   sf.saveSync()

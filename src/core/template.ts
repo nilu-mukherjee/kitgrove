@@ -27,7 +27,8 @@ function lookup(vars: TemplateVars, key: string): string | boolean {
   return vars[key] as string | boolean
 }
 
-function render(source: string, vars: TemplateVars): string {
+/** Renders a single template string with the same syntax as `.tpl` files. */
+export function renderString(source: string, vars: TemplateVars): string {
   // Resolve innermost {{#if}} blocks first, so nesting works.
   const innerIf = /\{\{#if (\w+)\}\}((?:(?!\{\{#if )[\s\S])*?)\{\{\/if\}\}/
   let out = source
@@ -79,7 +80,7 @@ export function renderTemplateDir(
   // Render everything before touching disk so a bad variable cannot leave a partial result.
   const rendered = plan.map((p) => ({
     ...p,
-    content: p.isTpl ? render(readFileSync(p.file, 'utf8'), vars) : readFileSync(p.file),
+    content: p.isTpl ? renderString(readFileSync(p.file, 'utf8'), vars) : readFileSync(p.file),
   }))
 
   if (!opts.dryRun) {
