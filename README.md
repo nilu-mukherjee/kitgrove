@@ -1,20 +1,90 @@
 # kitgrove
 
-A CLI that creates and manages **multi-tenant [Payload CMS](https://payloadcms.com) 3.x** projects:
-one Payload app and database serving many sites, one *tenant* per site.
+[![npm](https://img.shields.io/npm/v/kitgrove?color=cb3837&logo=npm)](https://www.npmjs.com/package/kitgrove)
+[![downloads](https://img.shields.io/npm/dm/kitgrove)](https://www.npmjs.com/package/kitgrove)
+[![CI](https://github.com/nilu-mukherjee/kitgrove/actions/workflows/ci.yml/badge.svg)](https://github.com/nilu-mukherjee/kitgrove/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![node](https://img.shields.io/node/v/kitgrove)](package.json)
+
+**Run many sites from one Payload CMS backend, from your terminal.**
+
+kitgrove creates and manages a multi-tenant [Payload CMS](https://payloadcms.com) 3.x project: one admin
+and one database serving many sites, with a *tenant* per site. Build collections, set access rules, manage
+users and content with commands, or with a full-screen terminal UI.
+
+> kitgrove is an independent, unofficial tool. It is not affiliated with or endorsed by Payload.
+
+## Why
+
+- **One backend, many sites.** Each site's content lives under its own tenant; the multi-tenant plugin
+  keeps them apart in the admin and in the API.
+- **No frontend required.** Create a headless project (`--headless`), or convert an existing one with
+  `kitgrove headless`. Each site's server calls REST or GraphQL with its own API key, limited to its tenant.
+- **Collections without boilerplate.** Answer a few questions (or pass `--fields`) and kitgrove writes the
+  collection, registers it, and sets who can read, create, update and delete.
+- **Everything scriptable, everything visible.** Every action is a command that works in CI, and `kitgrove`
+  alone opens a terminal UI over the same functions.
+
+## Quick start
 
 ```bash
 npm install -g kitgrove
-kitgrove create my-sites --template corporate --db postgres
-cd my-sites
-cp .env.example .env        # DATABASE_URL, PAYLOAD_SECRET
-kitgrove doctor               # checks config, dependencies, env and DB reachability
-kitgrove dev
+
+kitgrove create my-cms --template corporate --db postgres --headless
+cd my-cms
+cp .env.example .env            # DATABASE_URL, PAYLOAD_SECRET
+kitgrove doctor                 # checks config, dependencies, env and DB reachability
+kitgrove dev                    # admin at http://localhost:3000/admin
+
+kitgrove tenant add "Acme" --domain acme.com
+kitgrove user add acme-site@example.com --tenant acme --tenant-role editor
 ```
 
-Requires Node 20.12 or newer.
+Requires Node 20.12 or newer. Run `kitgrove` with no arguments for the terminal UI
+(see [Terminal UI](#terminal-ui)).
 
-Run `kitgrove` with no arguments for the full-screen terminal UI (see [Terminal UI](#terminal-ui)).
+## See it in action
+
+Real output from the commands (recorded with `scripts/record-demo.py`):
+
+```text
+$ kitgrove create my-cms --template corporate --db postgres --headless --yes --no-install
+Created my-cms/. Next: cd my-cms && cp .env.example .env && npm run dev
+
+$ kitgrove generate collection "Case Studies" \
+    --fields "client:text![unique],summary:textarea,status:select:draft|live[default=draft]" \
+    --access read=public,update=tenant-editor
+Created src/collections/CaseStudies.ts
+Registered in payload.config.ts
+
+$ kitgrove access show case-studies
+case-studies  (src/collections/CaseStudies.ts)
+  read   public
+  create -
+  update tenant-editor
+  delete -
+```
+
+The generated `src/collections/CaseStudies.ts`:
+
+```ts
+export const CaseStudies: CollectionConfig = {
+  slug: 'case-studies',
+  access: {
+    read: () => true,
+    update: tenantEditorOrAdmin,
+  },
+  admin: { useAsTitle: 'client' },
+  fields: [
+    { name: 'client', type: 'text', required: true, unique: true },
+    { name: 'summary', type: 'textarea' },
+    { name: 'status', type: 'select', defaultValue: 'draft', options: ['draft', 'live'] },
+  ],
+}
+```
+
+The full 26-second recording, including the terminal UI, is in [`demo/kitgrove.cast`](demo/kitgrove.cast):
+`asciinema play demo/kitgrove.cast`, or `agg demo/kitgrove.cast demo.gif` for a GIF.
 
 ## Commands
 
