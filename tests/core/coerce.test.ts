@@ -19,10 +19,24 @@ const meta: CollectionMeta = {
     { name: 'items', type: 'array' },
     { name: 'body', type: 'richText' },
     { name: 'tenant', type: 'relationship' },
+    { name: 'hash', type: 'text' },
+    { name: 'salt', type: 'text' },
+    { name: 'loginAttempts', type: 'number' },
+    { name: 'createdAt', type: 'date' },
+    { name: 'filename', type: 'text' },
   ],
 }
 
 describe('coerceSet', () => {
+  it('lists only editable fields in the unknown-field hint', () => {
+    expect(() => coerceSet(meta, ['nope=1'])).toThrow(/Fields: title, count, done/)
+    try {
+      coerceSet(meta, ['nope=1'])
+    } catch (e) {
+      expect((e as Error).message).not.toMatch(/salt|hash|loginAttempts/)
+    }
+  })
+
   it('splits on the first = only', () => {
     expect(coerceSet(meta, ['title=a=b'])).toEqual({ title: 'a=b' })
   })
@@ -66,6 +80,10 @@ describe('coerceSet', () => {
     [['data={bad'], /"data" must be valid JSON/],
     [['body=hello'], /rich text/],
     [['tenant=1'], /--tenant/],
+    [['hash=abc'], /"hash" is managed by Payload/],
+    [['loginAttempts=0'], /"loginAttempts" is managed by Payload/],
+    [['createdAt=2020-01-01'], /"createdAt" is managed by Payload/],
+    [['filename=x.png'], /"filename" is managed by Payload/],
     [['nope=1'], /Unknown field "nope".*title/],
     [['title'], /key=value/],
   ])('rejects %j', (pairs, message) => {

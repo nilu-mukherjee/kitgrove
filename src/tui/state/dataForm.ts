@@ -1,3 +1,4 @@
+import { MANAGED_FIELDS } from '../../core/coerce.js'
 import type { CollectionMeta, Doc } from '../../core/localApi.js'
 
 export interface DataRow {
@@ -22,7 +23,7 @@ function show(v: unknown): string {
 /** Editable rows for a document of `meta` (or a blank one): scalars as text, complex types as JSON. */
 export function dataForm(meta: CollectionMeta, doc?: Doc): DataRow[] {
   return meta.fields
-    .filter((f): f is typeof f & { name: string } => Boolean(f.name) && !HIDDEN.has(f.name!) && !SKIPPED_TYPES.has(f.type))
+    .filter((f): f is typeof f & { name: string } => Boolean(f.name) && !HIDDEN.has(f.name!) && !MANAGED_FIELDS.has(f.name!) && !SKIPPED_TYPES.has(f.type))
     .map((f) => {
       if (f.type === 'richText') {
         return {

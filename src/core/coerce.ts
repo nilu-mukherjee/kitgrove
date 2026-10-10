@@ -2,6 +2,35 @@ import { CliError } from './errors.js'
 import type { CollectionMeta, FieldMeta } from './localApi.js'
 
 const BUILT_IN_KEYS = new Set(['id', 'createdAt', 'updatedAt', '_status'])
+
+/** Written by Payload itself for authentication; changing them by hand breaks sign-in. */
+const AUTH_INTERNALS = [
+  'salt',
+  'hash',
+  'resetPasswordToken',
+  'resetPasswordExpiration',
+  'resetPasswordRequestedAt',
+  'loginAttempts',
+  'lockUntil',
+  'sessions',
+  '_verified',
+  '_verificationToken',
+  'apiKey',
+  'apiKeyIndex',
+  'enableAPIKey',
+]
+/** Written by Payload when a file is uploaded. */
+const UPLOAD_METADATA = ['url', 'thumbnailURL', 'filename', 'mimeType', 'filesize', 'width', 'height', 'focalX', 'focalY', 'sizes']
+const TIMESTAMPS = ['createdAt', 'updatedAt']
+
+/** Fields that exist on collections but are maintained by Payload, never by commands or forms. */
+export const MANAGED_FIELDS: ReadonlySet<string> = new Set([...AUTH_INTERNALS, ...UPLOAD_METADATA, ...TIMESTAMPS])
+const NEVER_IN_JSON: ReadonlySet<string> = new Set([...AUTH_INTERNALS, ...UPLOAD_METADATA])
+
+/** The fields of a collection a person can meaningfully set. */
+export function editableFields(meta: CollectionMeta): FieldMeta[] {
+  return meta.fields.filter((f) => f.name && !MANAGED_FIELDS.has(f.name))
+}
 const JSON_TYPES = new Set(['json', 'array', 'group', 'blocks', 'point'])
 
 const asId = (v: string): string | number => (/^\d+$/.test(v) ? Number(v) : v)
@@ -76,9 +105,12 @@ export function coerceSet(meta: CollectionMeta, pairs: string[]): Record<string,
     const value = pair.slice(eq + 1)
 
     if (key === 'tenant') throw new CliError('Set the tenant with --tenant, not --set.')
+    if (MANAGED_FIELDS.has(key) && meta.fields.some((f) => f.name === key)) {
+      throw new CliError(`Field "${key}" is managed by Payload and cannot be set here.`)
+    }
     const field = meta.fields.find((f) => f.name === key)
     if (!field) {
-      const names = meta.fields.map((f) => f.name).filter(Boolean).join(', ')
+      const names = editableFields(meta).map((f) => f.name).join(', ')
       throw new CliError(`Unknown field "${key}" in "${meta.slug}". Fields: ${names}.`)
     }
     out[key] = coerceValue(meta.slug, field, value)
@@ -91,8 +123,9 @@ export function checkKnownKeys(meta: CollectionMeta, data: Record<string, unknow
   const known = new Set([...meta.fields.map((f) => f.name), ...BUILT_IN_KEYS])
   for (const key of Object.keys(data)) {
     if (key === 'tenant') throw new CliError('Set the tenant with --tenant, not in the JSON.')
+    if (NEVER_IN_JSON.has(key)) throw new CliError(`Field "${key}" is managed by Payload and cannot be set here.`)
     if (!known.has(key)) {
-      const names = meta.fields.map((f) => f.name).filter(Boolean).join(', ')
+      const names = editableFields(meta).map((f) => f.name).join(', ')
       throw new CliError(`Unknown field "${key}" in "${meta.slug}". Fields: ${names}.`)
     }
   }

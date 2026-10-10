@@ -69,6 +69,27 @@ describe('dataForm / changedPairs', () => {
     expect(rows.find((r) => r.name === 'views')!.value).toBe('1')
   })
 
+  it('hides fields Payload manages (auth internals, timestamps, upload metadata)', () => {
+    const users: CollectionMeta = {
+      slug: 'users',
+      tenantScoped: false,
+      fields: [
+        { name: 'email', type: 'email' },
+        { name: 'roles', type: 'select', hasMany: true },
+        { name: 'salt', type: 'text' },
+        { name: 'hash', type: 'text' },
+        { name: 'loginAttempts', type: 'number' },
+        { name: 'lockUntil', type: 'date' },
+        { name: 'sessions', type: 'array' },
+        { name: 'createdAt', type: 'date' },
+        { name: 'updatedAt', type: 'date' },
+        { name: 'filename', type: 'text' },
+        { name: 'filesize', type: 'number' },
+      ],
+    }
+    expect(dataForm(users).map((r) => r.name)).toEqual(['email', 'roles'])
+  })
+
   it('returns only changed, editable rows as key=value pairs', () => {
     const original = dataForm(pages, { id: 1, title: 'Alpha', views: 1 })
     const edited = original.map((r) => (r.name === 'title' ? { ...r, value: 'Gamma=1' } : r))
