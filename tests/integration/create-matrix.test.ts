@@ -134,6 +134,33 @@ describe('built CLI: access', () => {
   })
 })
 
+function pty(root: string, scenario: 'navigate' | 'ctrl-c') {
+  const r = spawnSync('python3', ['-I', join(repo, 'tests/helpers/pty_driver.py'), bin, root, scenario], {
+    encoding: 'utf8',
+    timeout: 60_000,
+  })
+  if (r.status !== 0) throw new Error(`pty driver failed: ${r.stderr}`)
+  return JSON.parse(r.stdout.trim().split('\n').pop()!) as Record<string, boolean | number>
+}
+
+describe('built CLI: TUI in a real terminal', () => {
+  const scaffold = () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'paycms-pty-'))
+    paycms(cwd, 'create', 'site', '-t', 'blank', '-d', 'postgres', '--yes', '--no-install')
+    return join(cwd, 'site')
+  }
+
+  it('opens, navigates Collections and Doctor, and quits cleanly with q', () => {
+    const r = pty(scaffold(), 'navigate')
+    expect(r).toMatchObject({ enter: true, leave: true, home: true, collections: true, doctor: true, code: 0 })
+  })
+
+  it('restores the terminal and exits 0 on Ctrl+C from Home', () => {
+    const r = pty(scaffold(), 'ctrl-c')
+    expect(r).toMatchObject({ enter: true, leave: true, code: 0 })
+  })
+})
+
 describe('built CLI: outside a project', () => {
   it.each([['tenant', 'list'], ['doctor'], ['dev'], ['generate', 'collection', 'x']])('%s fails clearly', (...args) => {
     const r = paycms(mkdtempSync(join(tmpdir(), 'paycms-none-')), ...args)

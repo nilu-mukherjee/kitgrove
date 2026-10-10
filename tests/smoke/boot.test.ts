@@ -55,6 +55,14 @@ beforeAll(() => {
   gen(['collection', 'Authors', '--fields', 'name:text!'])
   gen(['collection', 'Books', '--fields', 'name:text!,author:relationship:authors'])
   gen(['collection', 'Authors', '--force', '--fields', 'name:text!,books:join:books.author'], true)
+  // Access rules: written at creation, then changed on an existing collection.
+  gen(['collection', 'Locked', '--access', 'read=public,create=tenant-editor,update=tenant-editor,delete=super-admin'])
+  const set = spawnSync('node', [bin, 'access', 'set', 'Notes', '--read', 'authenticated', '--delete', 'tenant-admin'], {
+    cwd: root,
+    env,
+    encoding: 'utf8',
+  })
+  if (set.status !== 0) throw new Error(`access set: ${set.stderr}`)
 })
 
 describe(`generated ${template}/${db} project`, () => {

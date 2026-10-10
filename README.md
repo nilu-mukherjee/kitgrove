@@ -14,6 +14,8 @@ paycms dev
 
 Requires Node 20.12 or newer.
 
+Run `paycms` with no arguments for the full-screen terminal UI (see [Terminal UI](#terminal-ui)).
+
 ## Commands
 
 | Command | What it does |
@@ -27,6 +29,10 @@ Requires Node 20.12 or newer.
 | `paycms tenant list` / `paycms tenant remove <slug> [--yes]` | List or delete sites. |
 | `paycms dev` / `build` / `types` | Run the project's `dev`, `build` and `generate:types` scripts. |
 | `paycms migrate [args…]` | `payload migrate`, e.g. `paycms migrate create add-notes`. |
+| `paycms access set <collection> --read <rule> --update <rule> …` / `paycms access show [collection]` | Change or show who can read/create/update/delete a collection. |
+| `paycms user list\|add\|roles\|assign\|unassign\|remove\|reset-password` | Users, roles and tenant membership. |
+| `paycms data collections\|list\|get\|create\|update\|delete` | Browse and edit documents. |
+| `paycms tui` | The terminal UI (same as running `paycms` with no arguments in a terminal). |
 | `paycms doctor` | Diagnose the current project. |
 
 ### Fields
@@ -83,6 +89,82 @@ exact lines to add are printed, and the exit code is 1. `--verbose` shows stack 
 `tenant` commands start the project's own Payload through its Local API, so run them from the project
 with `DATABASE_URL` and `PAYLOAD_SECRET` set (`.env` and `.env.local` are read).
 
+## Access rules
+
+Each of `read`, `create`, `update`, `delete` takes one rule:
+
+| Rule | Meaning |
+|---|---|
+| `public` | Anyone, including anonymous requests |
+| `authenticated` | Any signed-in user |
+| `tenant-scoped` | Signed-in users, filtered by tenant; anonymous only for tenants with `allowPublicRead` |
+| `tenant-editor` | Editors and admins of the document's tenant, plus super-admins |
+| `tenant-admin` | Admins of the document's tenant, plus super-admins |
+| `super-admin` | Super-admins only |
+
+```bash
+paycms create collection Notes --access read=public,update=tenant-editor,delete=tenant-admin
+paycms access set notes --update tenant-editor        # change one operation, others untouched
+paycms access show                                    # every collection ("custom" = not one of the rules above)
+```
+
+Collections generated without `--access` keep `read: tenantScoped` only. Operations you don't set use
+Payload's default (any signed-in user). `access set` edits the collection file; if its `access` block
+can't be edited safely (for example it contains a spread) nothing is written and the exact lines to add
+are printed. The helper files in `src/access/` are created if your project lacks them.
+
+## Users
+
+```bash
+paycms user list [--tenant acme]
+paycms user add ed@acme.com --tenant acme --tenant-role editor     # password: prompted, or PAYCMS_PASSWORD
+paycms user roles ed@acme.com --set super-admin,user
+paycms user assign ed@acme.com --tenant globex --tenant-role admin # replaces the role if already assigned
+paycms user unassign ed@acme.com --tenant globex
+paycms user remove ed@acme.com --yes
+paycms user reset-password ed@acme.com
+```
+
+Passwords are never accepted as flags (shell history): you are prompted with hidden input, or in scripts
+set `PAYCMS_PASSWORD`. Emails are case-insensitive. The last super-admin cannot be removed or demoted.
+
+## Data
+
+```bash
+paycms data collections
+paycms data list pages --tenant acme --where slug=home --limit 20 --page 1 [--json]
+paycms data get pages 3
+paycms data create pages --tenant acme --set title=Hello --set views=3        # or --json file.json
+paycms data update pages 3 --set title="New title"
+paycms data delete pages 3 --yes
+paycms data list pages --as ed@acme.com          # run as that user, with access control enforced
+```
+
+`--set` values are coerced by field type (number, checkbox `true|false`, date, select/radio options,
+relationship ids); array/group/blocks/json take JSON; rich text cannot be set with `--set` (use `--json`
+or the admin). Tenant-scoped collections require `--tenant` on create. Without `--as`, commands run
+with `overrideAccess: true`, like any script holding the database credentials.
+
+## Terminal UI
+
+`paycms` with no arguments opens a full-screen app (it needs a terminal; otherwise it prints help).
+
+| Screen | What you can do |
+|---|---|
+| Home | Open any screen below; outside a project: create one |
+| Collections | Browse, open the builder (`n`) |
+| New collection | Name, useAsTitle, a field table with a live preview of the generated file, access rules, write with `Ctrl+S` |
+| Tenants | List, add (`a`), delete (`d`) |
+| Users | Add, toggle super-admin, assign/unassign tenants, reset password, remove |
+| Access | Grid of collections × operations; `Enter` on a cell picks a rule |
+| Data | Pick a collection, page through documents (`[` `]`), filter by tenant (`t`), view, new, edit, delete |
+| Run | `dev`, `build`, `types`, `migrate` with streamed output; `Ctrl+C` stops the process, not the app |
+| Doctor | The same checks as `paycms doctor`; `r` re-runs |
+
+Keys: `↑↓`/`jk` move, `Enter` open, `Esc` back, `?` help, `q` quit from Home. Data screens connect to
+the database once, on first use. Needs a terminal of at least 80×24. In the builder: `a` add field, `e`
+edit, `d` delete, `J`/`K` reorder, `Enter` on a container to open it, `n` name, `t` useAsTitle, `x` access.
+
 ## Templates
 
 | Template | Adds |
@@ -113,6 +195,7 @@ Payload's own blank template at that release.
 npm install
 npm test                 # unit + integration (builds the CLI first)
 npm run test:smoke       # slow: installs a generated project, generates types and type-checks it
+                         # (includes collections using every field type and access rules)
 ```
 
 Layout: `src/commands` (thin command handlers), `src/core` (project detection, template rendering,
