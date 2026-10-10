@@ -20,11 +20,11 @@
     "@payloadcms/ui": "{{payloadVersion}}",
     "cross-env": "^7.0.3",
     "graphql": "^16.8.1",
-    "next": "16.3.3",
+    "next": "16.3.8",
     "payload": "{{payloadVersion}}",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "sharp": "0.35.4"
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@types/node": "22.19.9",
