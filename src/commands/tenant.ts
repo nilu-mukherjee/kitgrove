@@ -1,22 +1,13 @@
 import * as p from '@clack/prompts'
 import type { Command } from 'commander'
 import { CliError } from '../core/errors.js'
-import { withPayload } from '../core/payload.js'
+import type { LocalApi } from '../core/localApi.js'
+import { withLocalApi } from '../core/payload.js'
 import { requireProject } from '../core/project.js'
 import { toSlug } from '../core/template.js'
 
-/** The subset of Payload's Local API used here (kept local so the CLI has no payload dependency). */
-export interface TenantPayload {
-  find(args: {
-    collection: string
-    where?: Record<string, unknown>
-    limit?: number
-    depth?: number
-    pagination?: boolean
-  }): Promise<{ docs: Record<string, unknown>[] }>
-  create(args: { collection: string; data: Record<string, unknown> }): Promise<Record<string, unknown>>
-  delete(args: { collection: string; id: string | number }): Promise<unknown>
-}
+/** The Local API calls the tenant commands use. */
+export type TenantPayload = Pick<LocalApi, 'find' | 'create' | 'delete'>
 
 export interface TenantDoc {
   id: string | number
@@ -108,9 +99,7 @@ export function registerTenant(program: Command): void {
     .option('--starter', 'also create a home page')
     .action(async (name: string, o: { slug?: string; domain?: string; starter?: boolean }) => {
       const project = requireProject(process.cwd())
-      const created = await withPayload<TenantPayload, TenantDoc>(project, (payload) =>
-        addTenant(payload, { name, ...o }),
-      )
+      const created = await withLocalApi(project, (api) => addTenant(api, { name, ...o }))
       console.log(`Created tenant "${created.name}" (${created.slug}${created.domain ? `, ${created.domain}` : ''})`)
     })
 
@@ -119,7 +108,7 @@ export function registerTenant(program: Command): void {
     .description('List tenants')
     .action(async () => {
       const project = requireProject(process.cwd())
-      const tenants = await withPayload<TenantPayload, TenantDoc[]>(project, listTenants)
+      const tenants = await withLocalApi(project, listTenants)
       if (tenants.length === 0) console.log('No tenants yet. Create one with `paycms tenant add <name>`.')
       for (const t of tenants) console.log(`${t.slug}\t${t.domain ?? '-'}\t${t.name}`)
     })
@@ -135,7 +124,7 @@ export function registerTenant(program: Command): void {
         const ok = await p.confirm({ message: `Delete tenant "${slug}" and its content?` })
         if (p.isCancel(ok) || !ok) return
       }
-      await withPayload<TenantPayload, void>(project, (payload) => removeTenant(payload, slug))
+      await withLocalApi(project, (api) => removeTenant(api, slug))
       console.log(`Removed tenant "${slug}".`)
     })
 }

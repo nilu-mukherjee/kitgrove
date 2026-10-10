@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { readProjectEnv } from './env.js'
 import { CliError } from './errors.js'
+import { type LocalApi, fromPayload } from './localApi.js'
 import type { ProjectInfo } from './project.js'
 
 /** Makes the project's .env / .env.local values visible to its config. Existing variables win. */
@@ -47,4 +48,9 @@ export async function withPayload<P, T>(project: ProjectInfo, fn: (payload: P) =
   } finally {
     await payload.destroy()
   }
+}
+
+/** Like `withPayload`, but hands `fn` the narrow `LocalApi` instead of the raw Payload instance. */
+export function withLocalApi<T>(project: ProjectInfo, fn: (api: LocalApi) => Promise<T>): Promise<T> {
+  return withPayload<unknown, T>(project, (payload) => fn(fromPayload(payload)))
 }

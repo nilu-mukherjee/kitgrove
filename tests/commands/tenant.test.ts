@@ -21,7 +21,7 @@ function stub() {
     async find({ collection, where }) {
       const entries = Object.entries(where ?? {}) as [string, { equals: unknown }][]
       const docs = (data[collection] ?? []).filter((d) => entries.every(([k, v]) => d[k] === v.equals))
-      return { docs }
+      return { docs: docs as never, totalDocs: docs.length, page: 1, totalPages: 1 }
     },
     async create({ collection, data: doc }) {
       const created = { id: next++, ...doc } as Doc
