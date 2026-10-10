@@ -90,7 +90,7 @@ export async function runCreate(opts: CreateOptions): Promise<string[]> {
   return [...written]
 }
 
-function detectPackageManager(): PackageManager {
+export function detectPackageManager(): PackageManager {
   const agent = process.env.npm_config_user_agent ?? ''
   if (agent.startsWith('pnpm')) return 'pnpm'
   if (agent.startsWith('yarn')) return 'yarn'

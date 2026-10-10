@@ -42,7 +42,12 @@ export function App({ project, cwd, size }: { project: ProjectInfo | null; cwd: 
     reset: (s) => dispatch({ type: 'reset', screen: s }),
   }
 
-  useInput((input) => {
+  useInput((input, key) => {
+    // The Run screen uses Ctrl+C to stop its process; everywhere else it quits.
+    if (key.ctrl && input === 'c') {
+      if (screen.name !== 'run') exit()
+      return
+    }
     if (input === '?' && typing.current === 0) setHelp((h) => !h)
     else if (input === 'q' && screen.name === 'home' && !help && typing.current === 0) exit()
   })

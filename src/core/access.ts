@@ -84,7 +84,7 @@ function project() {
 }
 
 /** The object literal of the file's `CollectionConfig` (or any object literal with a `slug`). */
-function findConfigObject(sf: SourceFile): ObjectLiteralExpression | undefined {
+export function findConfigObject(sf: SourceFile): ObjectLiteralExpression | undefined {
   for (const decl of sf.getVariableDeclarations()) {
     const init = decl.getInitializer()
     if (!init || !Node.isObjectLiteralExpression(init)) continue

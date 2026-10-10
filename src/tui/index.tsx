@@ -26,7 +26,7 @@ export async function launchTui(): Promise<void> {
 
   try {
     const cwd = process.cwd()
-    const app = render(<App project={findProject(cwd)} cwd={cwd} />)
+    const app = render(<App project={findProject(cwd)} cwd={cwd} />, { exitOnCtrlC: false })
     await app.waitUntilExit()
   } finally {
     restore()

@@ -3,7 +3,12 @@ import React from 'react'
 import { dirname } from 'node:path'
 import { discover, runGenerate } from '../../commands/generate.js'
 import type { ProjectInfo } from '../../core/project.js'
+import { listProjectCollections } from '../../core/project-scan.js'
 import { Builder } from './Builder.js'
+import { Collections } from './Collections.js'
+import { CreateProject } from './CreateProject.js'
+import { Doctor } from './Doctor.js'
+import { Run } from './Run.js'
 import type { Size } from '../components/Frame.js'
 import type { Screen } from '../state/nav.js'
 
@@ -73,6 +78,17 @@ export function renderScreen(screen: Screen, ctx: ScreenContext): React.ReactNod
           size={ctx.size}
         />
       )
+    case 'create-project':
+      return <CreateProject nav={ctx.nav} cwd={ctx.cwd} size={ctx.size} />
+    case 'collections':
+      if (!ctx.project) return <Placeholder nav={ctx.nav} name="Collections (open a Payload project first)" />
+      return <Collections nav={ctx.nav} rows={listProjectCollections(ctx.project.configPath)} size={ctx.size} />
+    case 'doctor':
+      if (!ctx.project) return <Placeholder nav={ctx.nav} name="Doctor (open a Payload project first)" />
+      return <Doctor nav={ctx.nav} project={ctx.project} />
+    case 'run':
+      if (!ctx.project) return <Placeholder nav={ctx.nav} name="Run (open a Payload project first)" />
+      return <Run nav={ctx.nav} project={ctx.project} size={ctx.size} />
     default:
       return <Placeholder nav={ctx.nav} name={screenTitle(screen)} />
   }
