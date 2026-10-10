@@ -1,15 +1,14 @@
-import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { readProjectEnv } from './env.js'
 import { CliError } from './errors.js'
 import type { ProjectInfo } from './project.js'
 
-/** Loads .env.local then .env from the project root. Variables already set are never overridden. */
+/** Makes the project's .env / .env.local values visible to its config. Existing variables win. */
 function loadProjectEnv(root: string): void {
-  for (const file of ['.env.local', '.env']) {
-    const path = join(root, file)
-    if (existsSync(path)) process.loadEnvFile(path)
+  for (const [key, value] of Object.entries(readProjectEnv(root))) {
+    if (process.env[key] === undefined && value !== undefined) process.env[key] = value
   }
 }
 

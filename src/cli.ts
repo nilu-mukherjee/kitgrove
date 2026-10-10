@@ -2,8 +2,10 @@ import { readFileSync, realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { Command } from 'commander'
 import { registerCreate } from './commands/create.js'
+import { registerDoctor } from './commands/doctor.js'
 import { registerGenerate } from './commands/generate.js'
 import { registerTenant } from './commands/tenant.js'
+import { registerWrappers } from './commands/wrappers.js'
 import { CliError } from './core/errors.js'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
@@ -20,6 +22,8 @@ export function buildProgram(): Command {
   registerCreate(program)
   registerGenerate(program)
   registerTenant(program)
+  registerWrappers(program)
+  registerDoctor(program)
   return program
 }
 
