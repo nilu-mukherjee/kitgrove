@@ -2,8 +2,8 @@ import type { CollectionConfig } from 'payload'
 
 import { tenantScoped } from '../access/tenantScoped'
 
-export const Pages: CollectionConfig = {
-  slug: 'pages',
+export const Categories: CollectionConfig = {
+  slug: 'categories',
   access: {
     read: tenantScoped,
   },
@@ -21,12 +21,6 @@ export const Pages: CollectionConfig = {
       type: 'text',
       required: true,
       index: true,
-      defaultValue: 'home',
-      admin: { description: 'Use "home" for the site’s front page.' },
-    },
-    {
-      name: 'content',
-      type: 'richText',
     },
   ],
 }
