@@ -16,7 +16,7 @@ function once<T>(fn: () => Promise<T>): () => Promise<T> {
 /** Opens the full-screen TUI and always restores the terminal, including on errors and signals. */
 export async function launchTui(): Promise<void> {
   const out = process.stdout
-  let opened: Promise<{ api: LocalApi; close: () => Promise<void> }> | null = null
+  const session: { opened: Promise<{ api: LocalApi; close: () => Promise<void> }> | null } = { opened: null }
   let restored = false
   const restore = () => {
     if (restored) return
@@ -37,14 +37,14 @@ export async function launchTui(): Promise<void> {
     const project = findProject(cwd)
     const connect = project
       ? () => {
-          opened ??= openLocalApi(project).then((s) => ({ api: s.api, close: once(s.close) }))
-          return opened
+          session.opened ??= openLocalApi(project).then((s) => ({ api: s.api, close: once(s.close) }))
+          return session.opened
         }
       : undefined
     const app = render(<App project={project} cwd={cwd} connect={connect} />, { exitOnCtrlC: false })
     await app.waitUntilExit()
     // Wait for the connection to be released so the process can exit cleanly.
-    await opened?.then((s) => s.close()).catch(() => {})
+    await session.opened?.then((s) => s.close()).catch(() => {})
   } finally {
     restore()
     process.off('SIGTERM', onSignal)
