@@ -39,12 +39,12 @@
   "author": "Nilu Mukherjee",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nilu-mukherjee/grovekit.git"
+    "url": "git+https://github.com/nilu-mukherjee/kitgrove.git"
   },
   "bugs": {
-    "url": "https://github.com/nilu-mukherjee/grovekit/issues"
+    "url": "https://github.com/nilu-mukherjee/kitgrove/issues"
   },
-  "homepage": "https://github.com/nilu-mukherjee/grovekit#readme",
+  "homepage": "https://github.com/nilu-mukherjee/kitgrove#readme",
   "funding": {
     "type": "individual",
     "url": "https://ko-fi.com/nilustack"
