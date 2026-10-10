@@ -20,7 +20,17 @@ bin_path, cwd, scenario = sys.argv[1], sys.argv[2], sys.argv[3]
 pid, fd = pty.fork()
 if pid == 0:
     os.chdir(cwd)
-    os.execvp('node', ['node', bin_path])
+    # Ink detects CI (CI, CONTINUOUS_INTEGRATION) and then writes only the final frame, which would
+    # hide the live screens this driver is checking. Launch exactly as a person's terminal would.
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ('CI', 'CONTINUOUS_INTEGRATION') and not k.startswith('CI_')
+    }
+    env.setdefault('TERM', 'xterm-256color')
+    # Size the terminal before the program starts so it never sees 0x0.
+    fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack('HHHH', 30, 100, 0, 0))
+    os.execvpe('node', ['node', bin_path], env)
 fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', 30, 100, 0, 0))
 log = b''
 
@@ -58,7 +68,7 @@ def quiet(quiet_for=0.7, max_wait=25.0):
             return
 
 
-def wait_text(text, max_wait=60.0):
+def wait_text(text, max_wait=30.0):
     """Waits for `text` that has not been on screen before, then lets the screen settle.
 
     Use for the first appearance of a screen; `quiet` is only right for keys that produce no new text.
