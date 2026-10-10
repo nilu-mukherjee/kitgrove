@@ -36,5 +36,13 @@
     "vitest": "^5.0.3"
   },
   "license": "MIT",
-  "author": "Nilu Mukherjee"
+  "author": "Nilu Mukherjee",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nilu-mukherjee/grovekit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nilu-mukherjee/grovekit/issues"
+  },
+  "homepage": "https://github.com/nilu-mukherjee/grovekit#readme"
 }
