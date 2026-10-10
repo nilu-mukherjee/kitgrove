@@ -13,15 +13,10 @@ function loadProjectEnv(root: string): void {
   }
 }
 
-/**
- * Initialises the project's own Payload (Local API, no HTTP server) from its payload.config.ts,
- * runs `fn`, and always closes the database connection.
- */
-export async function withPayload<P, T>(project: ProjectInfo, fn: (payload: P) => Promise<T>): Promise<T> {
+async function initPayload(project: ProjectInfo): Promise<{ destroy: () => Promise<void> }> {
   loadProjectEnv(project.root)
   process.env.DISABLE_PAYLOAD_HMR = 'true'
 
-  let payload: { destroy: () => Promise<void> }
   try {
     const { tsImport } = await import('tsx/esm/api')
     const projectRequire = createRequire(join(project.root, 'package.json'))
@@ -34,7 +29,7 @@ export async function withPayload<P, T>(project: ProjectInfo, fn: (payload: P) =
         tsconfig: join(project.root, 'tsconfig.json'),
       }) as Promise<{ default: unknown }>,
     ])
-    payload = await getPayload({ config: await configModule.default })
+    return await getPayload({ config: await configModule.default })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     throw new CliError(
@@ -42,12 +37,25 @@ export async function withPayload<P, T>(project: ProjectInfo, fn: (payload: P) =
         'Check your .env (DATABASE_URL, PAYLOAD_SECRET), that dependencies are installed, and run `paycms doctor`.',
     )
   }
+}
 
+/**
+ * Initialises the project's own Payload (Local API, no HTTP server) from its payload.config.ts,
+ * runs `fn`, and always closes the database connection.
+ */
+export async function withPayload<P, T>(project: ProjectInfo, fn: (payload: P) => Promise<T>): Promise<T> {
+  const payload = await initPayload(project)
   try {
     return await fn(payload as unknown as P)
   } finally {
     await payload.destroy()
   }
+}
+
+/** A long-lived connection for the TUI; `close()` must be called when the session ends. */
+export async function openLocalApi(project: ProjectInfo): Promise<{ api: LocalApi; close: () => Promise<void> }> {
+  const payload = await initPayload(project)
+  return { api: fromPayload(payload), close: () => payload.destroy() }
 }
 
 /** Like `withPayload`, but hands `fn` the narrow `LocalApi` instead of the raw Payload instance. */

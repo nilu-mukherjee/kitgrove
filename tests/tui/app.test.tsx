@@ -1,6 +1,8 @@
 import { render } from 'ink-testing-library'
 import React from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { memoryApi } from '../helpers/memoryApi.js'
+import { has, settle, until } from '../helpers/ink.js'
 import { cleanup } from 'ink-testing-library'
 import type { ProjectInfo } from '../../src/core/project.js'
 import { App } from '../../src/tui/App.js'
@@ -86,5 +88,59 @@ describe('App / Home', () => {
   it('shows the too-small message in a small terminal', () => {
     const { lastFrame } = render(<App project={project} cwd="/work" size={{ columns: 50, rows: 10 }} />)
     expect(lastFrame()).toContain('too small')
+  })
+})
+
+describe('App / data screens', () => {
+  const connect = () => {
+    const { api } = memoryApi({
+      seed: { tenants: [{ slug: 'acme', name: 'Acme', domain: 'acme.com' }] },
+    })
+    const close = vi.fn(async () => {})
+    return { connect: vi.fn(async () => ({ api, close })), close }
+  }
+
+  it('connects lazily when a data screen opens and shows its data', async () => {
+    const c = connect()
+    const t = render(<App project={project} cwd="/work/my-site" size={size} connect={c.connect} />)
+    expect(c.connect).not.toHaveBeenCalled()
+    await settle()
+    t.stdin.write(DOWN)
+    await settle()
+    t.stdin.write(DOWN) // Tenants
+    await settle()
+    t.stdin.write('\r')
+    await until(t.lastFrame, has('acme.com'))
+    expect(c.connect).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes the connection when the app unmounts', async () => {
+    const c = connect()
+    const t = render(<App project={project} cwd="/work/my-site" size={size} connect={c.connect} />)
+    await settle()
+    t.stdin.write(DOWN)
+    await settle()
+    t.stdin.write(DOWN)
+    await settle()
+    t.stdin.write('\r')
+    await until(t.lastFrame, has('acme.com'))
+    t.unmount()
+    await vi.waitFor(() => expect(c.close).toHaveBeenCalledTimes(1))
+  })
+
+  it('shows a connection failure and lets the user go back', async () => {
+    const connect = vi.fn(async () => {
+      throw new Error('Could not initialise Payload: connect ECONNREFUSED')
+    })
+    const t = render(<App project={project} cwd="/work/my-site" size={size} connect={connect} />)
+    await settle()
+    t.stdin.write(DOWN)
+    await settle()
+    t.stdin.write(DOWN)
+    await settle()
+    t.stdin.write('\r')
+    await until(t.lastFrame, has('ECONNREFUSED'))
+    t.stdin.write('\u001B')
+    await until(t.lastFrame, has('New collection'))
   })
 })

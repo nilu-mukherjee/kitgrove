@@ -1,11 +1,12 @@
 import { Box, Text, useApp, useInput } from 'ink'
 import { basename } from 'node:path'
-import React, { useMemo, useReducer, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import type { LocalApi } from '../core/localApi.js'
 import type { ProjectInfo } from '../core/project.js'
 import { Frame, type Size, useSize } from './components/Frame.js'
 import { TextEntryContext } from './components/TextInput.js'
 import { Home } from './screens/Home.js'
-import { type Nav, renderScreen, screenHints, screenTitle } from './screens/index.js'
+import { ApiContext, type Nav, renderScreen, screenHints, screenTitle } from './screens/index.js'
 import { navReducer, type Screen } from './state/nav.js'
 
 const HELP = [
@@ -17,11 +18,45 @@ const HELP = [
   ['Ctrl+C', 'quit, or stop a running process'],
 ]
 
-export function App({ project, cwd, size }: { project: ProjectInfo | null; cwd: string; size?: Size }) {
+export interface Session {
+  api: LocalApi
+  close: () => Promise<void>
+}
+
+export function App({
+  project,
+  cwd,
+  size,
+  connect,
+}: {
+  project: ProjectInfo | null
+  cwd: string
+  size?: Size
+  /** Opens the database connection used by the data screens; called at most once, on first use. */
+  connect?: () => Promise<Session>
+}) {
   const [stack, dispatch] = useReducer(navReducer, [{ name: 'home' } as Screen])
   const [help, setHelp] = useState(false)
   const { exit } = useApp()
   const dims = useSize(size)
+  const session = useRef<Promise<Session> | null>(null)
+  const getApi = useMemo(
+    () =>
+      connect
+        ? () => {
+            session.current ??= connect()
+            return session.current.then((s) => s.api)
+          }
+        : null,
+    [connect],
+  )
+  // Close the connection when the app goes away, if it was ever opened.
+  useEffect(
+    () => () => {
+      void session.current?.then((s) => s.close()).catch(() => {})
+    },
+    [],
+  )
   const typing = useRef(0)
   const textEntry = useMemo(
     () => ({
@@ -56,6 +91,7 @@ export function App({ project, cwd, size }: { project: ProjectInfo | null; cwd: 
   const title = project ? basename(project.root) : 'no project'
 
   return (
+    <ApiContext.Provider value={getApi}>
     <TextEntryContext.Provider value={textEntry}>
     <Frame
       title={title}
@@ -80,5 +116,6 @@ export function App({ project, cwd, size }: { project: ProjectInfo | null; cwd: 
       )}
     </Frame>
     </TextEntryContext.Provider>
+    </ApiContext.Provider>
   )
 }
