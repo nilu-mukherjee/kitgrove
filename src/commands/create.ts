@@ -127,7 +127,7 @@ export function registerCreate(program: Command): void {
       let first = what
       if (!first) {
         if (!interactive) {
-          throw new CliError('Usage: grovekit create <project-name>  |  grovekit create collection [name]')
+          throw new CliError('Usage: kitgrove create <project-name>  |  kitgrove create collection [name]')
         }
         const choice = await p.select({
           message: 'What do you want to create?',
@@ -142,10 +142,10 @@ export function registerCreate(program: Command): void {
         return
       }
 
-      // `grovekit create project [name]` is accepted too; otherwise the first argument is the name.
+      // `kitgrove create project [name]` is accepted too; otherwise the first argument is the name.
       let name = first === 'project' ? nameArg : first
       if (!name) {
-        if (!interactive) throw new CliError('A project name is required: grovekit create <name>.')
+        if (!interactive) throw new CliError('A project name is required: kitgrove create <name>.')
         name = String(ensure(await p.text({ message: 'Project name', placeholder: 'my-sites' })) ?? '').trim()
         if (!name) throw new CliError('A project name is required.')
       }

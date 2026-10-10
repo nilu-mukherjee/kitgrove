@@ -43,7 +43,7 @@ export function Frame({
     <Box flexDirection="column" width={s.columns} height={s.rows}>
       <Box borderStyle="round" paddingX={1}>
         <Text bold color="cyan">
-          grovekit
+          kitgrove
         </Text>
         <Text> · {title}</Text>
         {subtitle ? <Text dimColor> · {subtitle}</Text> : null}

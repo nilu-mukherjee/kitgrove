@@ -16,7 +16,7 @@ function metaFor(api: LocalApi, slug: string): CollectionMeta {
   const meta = all.find((c) => c.slug === slug)
   if (!meta) {
     throw new CliError(
-      `No collection "${slug}". Run \`grovekit data collections\`; available: ${all.map((c) => c.slug).join(', ') || '(none)'}.`,
+      `No collection "${slug}". Run \`kitgrove data collections\`; available: ${all.map((c) => c.slug).join(', ') || '(none)'}.`,
     )
   }
   return meta

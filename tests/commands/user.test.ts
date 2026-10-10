@@ -118,13 +118,13 @@ describe('resetPassword', () => {
 
 describe('resolvePassword', () => {
   it('prompts on a TTY', async () => {
-    expect(await resolvePassword({ GROVEKIT_PASSWORD: 'env' }, async () => 'typed', true)).toBe('typed')
+    expect(await resolvePassword({ KITGROVE_PASSWORD: 'env' }, async () => 'typed', true)).toBe('typed')
   })
-  it('falls back to GROVEKIT_PASSWORD without a TTY', async () => {
-    expect(await resolvePassword({ GROVEKIT_PASSWORD: 'env' }, async () => 'typed', false)).toBe('env')
+  it('falls back to KITGROVE_PASSWORD without a TTY', async () => {
+    expect(await resolvePassword({ KITGROVE_PASSWORD: 'env' }, async () => 'typed', false)).toBe('env')
   })
   it('errors naming the variable when neither is available', async () => {
-    await expect(resolvePassword({}, async () => '', false)).rejects.toThrow(/GROVEKIT_PASSWORD/)
+    await expect(resolvePassword({}, async () => '', false)).rejects.toThrow(/KITGROVE_PASSWORD/)
     await expect(resolvePassword({}, async () => '', true)).rejects.toThrow(/empty/)
   })
 })

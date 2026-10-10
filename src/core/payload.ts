@@ -34,7 +34,7 @@ async function initPayload(project: ProjectInfo): Promise<{ destroy: () => Promi
     const message = err instanceof Error ? err.message : String(err)
     throw new CliError(
       `Could not initialise Payload: ${message}\n` +
-        'Check your .env (DATABASE_URL, PAYLOAD_SECRET), that dependencies are installed, and run `grovekit doctor`.',
+        'Check your .env (DATABASE_URL, PAYLOAD_SECRET), that dependencies are installed, and run `kitgrove doctor`.',
     )
   }
 }

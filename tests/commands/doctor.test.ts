@@ -8,7 +8,7 @@ import { readProjectEnv } from '../../src/core/env.js'
 import { findProject } from '../../src/core/project.js'
 
 async function project(db: 'postgres' | 'mongodb' = 'postgres', installed = true) {
-  const cwd = mkdtempSync(join(tmpdir(), 'grovekit-doc-'))
+  const cwd = mkdtempSync(join(tmpdir(), 'kitgrove-doc-'))
   await runCreate({ name: 'site', template: 'blank', db, pm: 'npm', yes: true, install: false, cwd })
   const root = join(cwd, 'site')
   if (installed) mkdirSync(join(root, 'node_modules', 'payload'), { recursive: true })
@@ -25,7 +25,7 @@ const find = (checks: Awaited<ReturnType<typeof runDoctor>>, part: string) =>
 
 describe('readProjectEnv', () => {
   it('prefers process env, then .env.local, then .env', () => {
-    const root = mkdtempSync(join(tmpdir(), 'grovekit-env-'))
+    const root = mkdtempSync(join(tmpdir(), 'kitgrove-env-'))
     writeFileSync(join(root, '.env'), 'A=from-env\nB=from-env\nC=from-env\n')
     writeFileSync(join(root, '.env.local'), 'B=from-local\nC=from-local\n')
     expect(readProjectEnv(root, { C: 'from-process' })).toMatchObject({

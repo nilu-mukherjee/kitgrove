@@ -34,7 +34,7 @@ export default buildConfig({
   sharp,
   plugins: [
     multiTenantPlugin({
-      // Every tenant-scoped collection is listed here; `grovekit generate collection` adds new ones.
+      // Every tenant-scoped collection is listed here; `kitgrove generate collection` adds new ones.
       collections: {
         pages: {},
         media: {},

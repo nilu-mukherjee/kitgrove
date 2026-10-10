@@ -7,7 +7,7 @@ export function packageRoot(): string {
   let dir = dirname(fileURLToPath(import.meta.url))
   while (!existsSync(join(dir, 'package.json'))) {
     const parent = dirname(dir)
-    if (parent === dir) throw new Error('grovekit: could not locate its own package root')
+    if (parent === dir) throw new Error('kitgrove: could not locate its own package root')
     dir = parent
   }
   return dir

@@ -48,7 +48,7 @@ export default buildConfig({
 }
 
 function write(content: string) {
-  const path = join(mkdtempSync(join(tmpdir(), 'grovekit-codemod-')), 'payload.config.ts')
+  const path = join(mkdtempSync(join(tmpdir(), 'kitgrove-codemod-')), 'payload.config.ts')
   writeFileSync(path, content)
   return path
 }

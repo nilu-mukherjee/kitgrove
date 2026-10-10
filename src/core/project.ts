@@ -46,7 +46,7 @@ export function requireProject(cwd: string): ProjectInfo {
   if (!project) {
     throw new CliError(
       'Not inside a Payload project (no package.json depending on "payload" with a payload.config.ts found). ' +
-        'Run this from a project created with `grovekit create`.',
+        'Run this from a project created with `kitgrove create`.',
     )
   }
   return project

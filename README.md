@@ -1,43 +1,43 @@
-# grovekit
+# kitgrove
 
 A CLI that creates and manages **multi-tenant [Payload CMS](https://payloadcms.com) 3.x** projects:
 one Payload app and database serving many sites, one *tenant* per site.
 
 ```bash
-npm install -g grovekit
-grovekit create my-sites --template corporate --db postgres
+npm install -g kitgrove
+kitgrove create my-sites --template corporate --db postgres
 cd my-sites
 cp .env.example .env        # DATABASE_URL, PAYLOAD_SECRET
-grovekit doctor               # checks config, dependencies, env and DB reachability
-grovekit dev
+kitgrove doctor               # checks config, dependencies, env and DB reachability
+kitgrove dev
 ```
 
 Requires Node 20.12 or newer.
 
-Run `grovekit` with no arguments for the full-screen terminal UI (see [Terminal UI](#terminal-ui)).
+Run `kitgrove` with no arguments for the full-screen terminal UI (see [Terminal UI](#terminal-ui)).
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `grovekit create <name> [-t blank\|blog\|corporate] [-d postgres\|mongodb] [--pm npm\|pnpm\|yarn]` | Scaffold a project. `--yes` skips prompts, `--no-install` skips installing, `--dry-run` lists files. |
-| `grovekit create collection [name]` (same as `grovekit generate collection`) | New collection, registered in `payload.config.ts`. In a terminal it asks for the name, `useAsTitle`, then each field. Tenant-scoped unless `--global-shared`. `--fields`, `--use-as-title <field>` or `--yes` skip the prompts. |
-| `grovekit generate global <name> [--fields <spec>] [--global-shared]` | A per-tenant global (one document per tenant). With `--global-shared`, a real Payload global shared by all tenants. |
-| `grovekit generate block <name> [--fields <spec>]` | A block with the given fields; import it into a `blocks` field. |
-| `grovekit generate field\|hook\|access <name>` | Scaffold the file; import it where you need it. |
-| `grovekit tenant add <name> [--slug s] [--domain x.com] [--starter]` | Create a site. `--starter` also creates its `home` page. |
-| `grovekit tenant list` / `grovekit tenant remove <slug> [--yes]` | List or delete sites. |
-| `grovekit dev` / `build` / `types` | Run the project's `dev`, `build` and `generate:types` scripts. |
-| `grovekit migrate [args…]` | `payload migrate`, e.g. `grovekit migrate create add-notes`. |
-| `grovekit access set <collection> --read <rule> --update <rule> …` / `grovekit access show [collection]` | Change or show who can read/create/update/delete a collection. |
-| `grovekit user list\|add\|roles\|assign\|unassign\|remove\|reset-password` | Users, roles and tenant membership. |
-| `grovekit data collections\|list\|get\|create\|update\|delete` | Browse and edit documents. |
-| `grovekit tui` | The terminal UI (same as running `grovekit` with no arguments in a terminal). |
-| `grovekit doctor` | Diagnose the current project. |
+| `kitgrove create <name> [-t blank\|blog\|corporate] [-d postgres\|mongodb] [--pm npm\|pnpm\|yarn]` | Scaffold a project. `--yes` skips prompts, `--no-install` skips installing, `--dry-run` lists files. |
+| `kitgrove create collection [name]` (same as `kitgrove generate collection`) | New collection, registered in `payload.config.ts`. In a terminal it asks for the name, `useAsTitle`, then each field. Tenant-scoped unless `--global-shared`. `--fields`, `--use-as-title <field>` or `--yes` skip the prompts. |
+| `kitgrove generate global <name> [--fields <spec>] [--global-shared]` | A per-tenant global (one document per tenant). With `--global-shared`, a real Payload global shared by all tenants. |
+| `kitgrove generate block <name> [--fields <spec>]` | A block with the given fields; import it into a `blocks` field. |
+| `kitgrove generate field\|hook\|access <name>` | Scaffold the file; import it where you need it. |
+| `kitgrove tenant add <name> [--slug s] [--domain x.com] [--starter]` | Create a site. `--starter` also creates its `home` page. |
+| `kitgrove tenant list` / `kitgrove tenant remove <slug> [--yes]` | List or delete sites. |
+| `kitgrove dev` / `build` / `types` | Run the project's `dev`, `build` and `generate:types` scripts. |
+| `kitgrove migrate [args…]` | `payload migrate`, e.g. `kitgrove migrate create add-notes`. |
+| `kitgrove access set <collection> --read <rule> --update <rule> …` / `kitgrove access show [collection]` | Change or show who can read/create/update/delete a collection. |
+| `kitgrove user list\|add\|roles\|assign\|unassign\|remove\|reset-password` | Users, roles and tenant membership. |
+| `kitgrove data collections\|list\|get\|create\|update\|delete` | Browse and edit documents. |
+| `kitgrove tui` | The terminal UI (same as running `kitgrove` with no arguments in a terminal). |
+| `kitgrove doctor` | Diagnose the current project. |
 
 ### Fields
 
-In a terminal, `grovekit create collection` asks for the **collection name**, then **useAsTitle** (the field
+In a terminal, `kitgrove create collection` asks for the **collection name**, then **useAsTitle** (the field
 that names a document in the admin), then for each field: **name**, **type** (the full Payload list),
 whatever that type needs (options, target collection, nested fields…), **required**, **unique**, a
 **default value**, and, behind one confirm, extras (label, description, admin position, read-only, index,
@@ -48,7 +48,7 @@ hasMany, min/max, minLength/maxLength). Leave the field name empty to finish; wi
 For scripts and CI, pass the same thing with `--fields` (or `--yes` to skip prompts entirely):
 
 ```bash
-grovekit generate collection "Case Studies" --fields \
+kitgrove generate collection "Case Studies" --fields \
   "client:text!,status:select:draft|live,cover:upload:media,links:array(label:text!,url:text!)"
 ```
 
@@ -70,7 +70,7 @@ Per-field options go in a trailing `[...]`: flags (`unique`, `index`, `readOnly`
 `maxLength`). Values can't contain `,` or `]`. For example:
 
 ```bash
-grovekit create collection Products --use-as-title sku --fields \
+kitgrove create collection Products --use-as-title sku --fields \
   "sku:text![unique,index],price:number![min=0],stock:number[default=0],sale:checkbox,status:select:draft|live[default=draft,position=sidebar]"
 ```
 
@@ -103,9 +103,9 @@ Each of `read`, `create`, `update`, `delete` takes one rule:
 | `super-admin` | Super-admins only |
 
 ```bash
-grovekit create collection Notes --access read=public,update=tenant-editor,delete=tenant-admin
-grovekit access set notes --update tenant-editor        # change one operation, others untouched
-grovekit access show                                    # every collection ("custom" = not one of the rules above)
+kitgrove create collection Notes --access read=public,update=tenant-editor,delete=tenant-admin
+kitgrove access set notes --update tenant-editor        # change one operation, others untouched
+kitgrove access show                                    # every collection ("custom" = not one of the rules above)
 ```
 
 Collections generated without `--access` keep `read: tenantScoped` only. Operations you don't set use
@@ -116,28 +116,28 @@ are printed. The helper files in `src/access/` are created if your project lacks
 ## Users
 
 ```bash
-grovekit user list [--tenant acme]
-grovekit user add ed@acme.com --tenant acme --tenant-role editor     # password: prompted, or GROVEKIT_PASSWORD
-grovekit user roles ed@acme.com --set super-admin,user
-grovekit user assign ed@acme.com --tenant globex --tenant-role admin # replaces the role if already assigned
-grovekit user unassign ed@acme.com --tenant globex
-grovekit user remove ed@acme.com --yes
-grovekit user reset-password ed@acme.com
+kitgrove user list [--tenant acme]
+kitgrove user add ed@acme.com --tenant acme --tenant-role editor     # password: prompted, or KITGROVE_PASSWORD
+kitgrove user roles ed@acme.com --set super-admin,user
+kitgrove user assign ed@acme.com --tenant globex --tenant-role admin # replaces the role if already assigned
+kitgrove user unassign ed@acme.com --tenant globex
+kitgrove user remove ed@acme.com --yes
+kitgrove user reset-password ed@acme.com
 ```
 
 Passwords are never accepted as flags (shell history): you are prompted with hidden input, or in scripts
-set `GROVEKIT_PASSWORD`. Emails are case-insensitive. The last super-admin cannot be removed or demoted.
+set `KITGROVE_PASSWORD`. Emails are case-insensitive. The last super-admin cannot be removed or demoted.
 
 ## Data
 
 ```bash
-grovekit data collections
-grovekit data list pages --tenant acme --where slug=home --limit 20 --page 1 [--json]
-grovekit data get pages 3
-grovekit data create pages --tenant acme --set title=Hello --set views=3        # or --json file.json
-grovekit data update pages 3 --set title="New title"
-grovekit data delete pages 3 --yes
-grovekit data list pages --as ed@acme.com          # run as that user, with access control enforced
+kitgrove data collections
+kitgrove data list pages --tenant acme --where slug=home --limit 20 --page 1 [--json]
+kitgrove data get pages 3
+kitgrove data create pages --tenant acme --set title=Hello --set views=3        # or --json file.json
+kitgrove data update pages 3 --set title="New title"
+kitgrove data delete pages 3 --yes
+kitgrove data list pages --as ed@acme.com          # run as that user, with access control enforced
 ```
 
 `--set` values are coerced by field type (number, checkbox `true|false`, date, select/radio options,
@@ -147,7 +147,7 @@ with `overrideAccess: true`, like any script holding the database credentials.
 
 ## Terminal UI
 
-`grovekit` with no arguments opens a full-screen app (it needs a terminal; otherwise it prints help).
+`kitgrove` with no arguments opens a full-screen app (it needs a terminal; otherwise it prints help).
 
 | Screen | What you can do |
 |---|---|
@@ -159,7 +159,7 @@ with `overrideAccess: true`, like any script holding the database credentials.
 | Access | Grid of collections × operations; `Enter` on a cell picks a rule |
 | Data | Pick a collection, page through documents (`[` `]`), filter by tenant (`t`), view, new, edit, delete |
 | Run | `dev`, `build`, `types`, `migrate` with streamed output; `Ctrl+C` stops the process, not the app |
-| Doctor | The same checks as `grovekit doctor`; `r` re-runs |
+| Doctor | The same checks as `kitgrove doctor`; `r` re-runs |
 
 Keys: `↑↓`/`jk` move, `Enter` open, `Esc` back, `?` help, `q` quit from Home. Data screens connect to
 the database once, on first use. Needs a terminal of at least 80×24. In the builder: `a` add field, `e`

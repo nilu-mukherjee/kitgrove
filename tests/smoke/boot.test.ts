@@ -1,6 +1,6 @@
 /**
  * Slow, network-dependent: installs a generated project and checks that it type-checks.
- * Run with `npm run test:smoke`. Template/db via GROVEKIT_SMOKE_TEMPLATE / GROVEKIT_SMOKE_DB.
+ * Run with `npm run test:smoke`. Template/db via KITGROVE_SMOKE_TEMPLATE / KITGROVE_SMOKE_DB.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync } from 'node:fs'
@@ -10,8 +10,8 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 const repo = join(import.meta.dirname, '..', '..')
 const bin = join(repo, 'dist', 'cli.js')
-const template = process.env.GROVEKIT_SMOKE_TEMPLATE ?? 'corporate'
-const db = process.env.GROVEKIT_SMOKE_DB ?? 'postgres'
+const template = process.env.KITGROVE_SMOKE_TEMPLATE ?? 'corporate'
+const db = process.env.KITGROVE_SMOKE_DB ?? 'postgres'
 
 const env = {
   ...process.env,
@@ -26,7 +26,7 @@ const sh = (cmd: string, args: string[]) =>
 
 beforeAll(() => {
   execFileSync('npm', ['run', 'build', '--silent'], { cwd: repo })
-  const cwd = mkdtempSync(join(tmpdir(), 'grovekit-smoke-'))
+  const cwd = mkdtempSync(join(tmpdir(), 'kitgrove-smoke-'))
   execFileSync('node', [bin, 'create', 'site', '-t', template, '-d', db, '--pm', 'npm', '--yes'], {
     cwd,
     env,

@@ -1,10 +1,10 @@
 {
-  "name": "grovekit",
+  "name": "kitgrove",
   "version": "0.1.0",
   "description": "CLI to create and manage multi-tenant Payload CMS projects",
   "type": "module",
   "bin": {
-    "grovekit": "dist/cli.js"
+    "kitgrove": "dist/cli.js"
   },
   "files": [
     "dist",

@@ -1,4 +1,4 @@
-"""Drives the built grovekit TUI in a pseudo-terminal and prints a JSON summary.
+"""Drives the built kitgrove TUI in a pseudo-terminal and prints a JSON summary.
 
 usage: python3 -I pty_driver.py <path to dist/cli.js> <project dir> navigate|ctrl-c
 

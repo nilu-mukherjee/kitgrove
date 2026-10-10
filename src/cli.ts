@@ -19,7 +19,7 @@ const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url),
 export function buildProgram(): Command {
   const program = new Command()
   program
-    .name('grovekit')
+    .name('kitgrove')
     .description('Create and manage multi-tenant Payload CMS projects')
     .version(pkg.version)
     .option('--verbose', 'show stack traces on errors')
@@ -31,7 +31,7 @@ export function buildProgram(): Command {
   registerData(program)
   program
     .command('tui')
-    .description('Open the full-screen terminal UI (also: run grovekit with no arguments)')
+    .description('Open the full-screen terminal UI (also: run kitgrove with no arguments)')
     .action(async () => {
       if (!process.stdin.isTTY || !process.stdout.isTTY) {
         throw new CliError('The TUI needs an interactive terminal.')

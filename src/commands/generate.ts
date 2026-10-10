@@ -202,7 +202,7 @@ export async function runGenerate(
   for (const { field, collection } of collectRelations(fields)) {
     if (collection !== slug && !BUILT_IN_SLUGS.has(collection) && !slugExists(srcDir, collection, '')) {
       throw new CliError(
-        `Field "${field}" points to "${collection}", which does not exist in this project — generate it first (grovekit generate collection ${collection}).`,
+        `Field "${field}" points to "${collection}", which does not exist in this project — generate it first (kitgrove generate collection ${collection}).`,
       )
     }
   }
@@ -210,7 +210,7 @@ export async function runGenerate(
   for (const b of blockSlugs) {
     if (!existsSync(join(srcDir, 'blocks', `${toPascal(b)}.ts`))) {
       throw new CliError(
-        `Field uses block "${b}", which does not exist in this project — generate it first (grovekit generate block ${b}).`,
+        `Field uses block "${b}", which does not exist in this project — generate it first (kitgrove generate block ${b}).`,
       )
     }
   }
@@ -259,7 +259,7 @@ export interface GenerateFlags {
   yes?: boolean
 }
 
-/** Shared by `grovekit generate <kind> [name]` and `grovekit create <kind> [name]`. */
+/** Shared by `kitgrove generate <kind> [name]` and `kitgrove create <kind> [name]`. */
 export async function handleGenerate(kind: string, nameArg: string | undefined, o: GenerateFlags): Promise<void> {
   if (!(KINDS as readonly string[]).includes(kind)) {
     throw new CliError(`Unknown kind "${kind}". Choose one of: ${KINDS.join(', ')}.`)
@@ -270,7 +270,7 @@ export async function handleGenerate(kind: string, nameArg: string | undefined, 
   let name = nameArg
   if (!name) {
     if (!interactive) {
-      throw new CliError(`A ${kind} name is required: grovekit generate ${kind} <name>.`)
+      throw new CliError(`A ${kind} name is required: kitgrove generate ${kind} <name>.`)
     }
     const answer = await p.text({ message: `${kind[0]!.toUpperCase()}${kind.slice(1)} name`, placeholder: 'e.g. Case Studies' })
     bail(answer)
@@ -447,7 +447,7 @@ async function promptField(
     spec.join = { collection: String(collection), on }
   } else if (type === 'blocks') {
     if (!ctx.blocks.length) {
-      p.log.error('No blocks yet. Run `grovekit generate block <name>` first.')
+      p.log.error('No blocks yet. Run `kitgrove generate block <name>` first.')
       return null
     }
     const picked = await p.multiselect({

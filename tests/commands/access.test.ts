@@ -8,7 +8,7 @@ import { runGenerate } from '../../src/commands/generate.js'
 import { CliError } from '../../src/core/errors.js'
 
 async function project() {
-  const cwd = mkdtempSync(join(tmpdir(), 'grovekit-acc-'))
+  const cwd = mkdtempSync(join(tmpdir(), 'kitgrove-acc-'))
   await runCreate({ name: 'site', template: 'blank', db: 'postgres', pm: 'npm', yes: true, install: false, cwd })
   const root = join(cwd, 'site')
   await runGenerate('collection', 'Case Studies', { cwd: root })

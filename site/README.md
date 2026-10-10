@@ -1,7 +1,7 @@
 # site
 
 A multi-tenant [Payload CMS](https://payloadcms.com) app: one admin and database serving many sites,
-one **tenant** per site. Created with `grovekit`.
+one **tenant** per site. Created with `kitgrove`.
 
 ## Getting started
 
@@ -24,7 +24,7 @@ The first user you create becomes a `super-admin` and can see every tenant.
 ## Useful commands
 
 ```bash
-grovekit generate collection <name>   # new tenant-scoped collection
-grovekit tenant add "Acme" --domain acme.com
-grovekit doctor
+kitgrove generate collection <name>   # new tenant-scoped collection
+kitgrove tenant add "Acme" --domain acme.com
+kitgrove doctor
 ```

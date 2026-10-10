@@ -32,7 +32,7 @@ function BlockPicker({ blocks, selected, onToggle, onClose }: {
     else if ((key.return || input === ' ') && blocks[i]) onToggle(blocks[i]!)
   })
   if (blocks.length === 0) {
-    return <Text color="yellow">No blocks yet. Create one first (grovekit generate block &lt;name&gt;). Esc to close.</Text>
+    return <Text color="yellow">No blocks yet. Create one first (kitgrove generate block &lt;name&gt;). Esc to close.</Text>
   }
   return (
     <Box flexDirection="column">
