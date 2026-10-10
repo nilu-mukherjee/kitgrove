@@ -4,10 +4,21 @@ import type { Command } from 'commander'
 import { registerInConfig } from '../core/codemod.js'
 import { CliError } from '../core/errors.js'
 import * as p from '@clack/prompts'
-import { FIELD_TYPES, type FieldSpec, parseFieldSpecs, pickTitleField, renderFields } from '../core/fields.js'
+import {
+  FIELD_TYPES,
+  type FieldSpec,
+  type FieldType,
+  collectBlocks,
+  collectRelations,
+  parseFieldSpecs,
+  pickTitleField,
+  renderFields,
+  supportsRequired,
+  validateSpecs,
+} from '../core/fields.js'
 import { templatesDir } from '../core/paths.js'
 import { requireProject } from '../core/project.js'
-import { renderString, toSlug } from '../core/template.js'
+import { renderString, toCamel, toPascal, toSlug } from '../core/template.js'
 
 export const KINDS = ['collection', 'global', 'block', 'field', 'hook', 'access'] as const
 export type GenerateKind = (typeof KINDS)[number]
@@ -46,17 +57,6 @@ const RESERVED_WORDS = new Set(
   ),
 )
 
-const pascal = (slug: string) =>
-  slug
-    .split('-')
-    .map((w) => w[0]!.toUpperCase() + w.slice(1))
-    .join('')
-
-const camel = (slug: string) => {
-  const p = pascal(slug)
-  return p[0]!.toLowerCase() + p.slice(1)
-}
-
 const OUT_DIR: Record<GenerateKind, string> = {
   collection: 'collections',
   global: 'globals',
@@ -87,8 +87,8 @@ export async function runGenerate(
   const project = requireProject(opts.cwd)
   const srcDir = dirname(project.configPath)
   const slug = toSlug(name)
-  const Name = pascal(slug)
-  const lower = camel(slug)
+  const Name = toPascal(slug)
+  const lower = toCamel(slug)
 
   const identifiable = kind === 'field' || kind === 'hook' || kind === 'access'
   if (identifiable && RESERVED_WORDS.has(lower)) {
@@ -116,14 +116,26 @@ export async function runGenerate(
   if (fields.length > 0 && !hasFields) {
     throw new CliError(`--fields only applies to collection, global and block, not ${kind}.`)
   }
-  for (const f of fields) {
-    const to = f.relationTo
-    if (to && to !== slug && !BUILT_IN_SLUGS.has(to) && !slugExists(srcDir, to, '')) {
+  for (const { field, collection } of collectRelations(fields)) {
+    if (collection !== slug && !BUILT_IN_SLUGS.has(collection) && !slugExists(srcDir, collection, '')) {
       throw new CliError(
-        `Field "${f.name}" points to "${to}", which does not exist in this project — generate it first (paycms generate collection ${to}).`,
+        `Field "${field}" points to "${collection}", which does not exist in this project — generate it first (paycms generate collection ${collection}).`,
       )
     }
   }
+  const blockSlugs = collectBlocks(fields)
+  for (const b of blockSlugs) {
+    if (!existsSync(join(srcDir, 'blocks', `${toPascal(b)}.ts`))) {
+      throw new CliError(
+        `Field uses block "${b}", which does not exist in this project — generate it first (paycms generate block ${b}).`,
+      )
+    }
+  }
+  // Blocks generated into src/blocks sit next to each other; everything else is one level deeper.
+  const blockBase = kind === 'block' ? '.' : '../blocks'
+  const imports = blockSlugs
+    .map((b) => `import { ${toPascal(b)} } from '${blockBase}/${toPascal(b)}'\n`)
+    .join('')
   if (existsSync(target) && !opts.force) {
     throw new CliError(`Refusing to overwrite ${rel} (use --force).`)
   }
@@ -136,6 +148,7 @@ export async function runGenerate(
     slug,
     tenantScoped,
     isGlobal,
+    imports,
     titleField: pickTitleField(fields),
     fields: renderFields(
       fields.length > 0 ? fields : parseFieldSpecs(kind === 'collection' || isGlobal ? 'title:text!' : 'title:text'),
@@ -184,7 +197,10 @@ export function registerGenerate(program: Command): void {
         const takesFields = ['collection', 'global', 'block'].includes(kind)
         let fields = o.fields ? parseFieldSpecs(o.fields) : []
         const interactive = process.stdin.isTTY && process.stdout.isTTY && !o.yes && !o.dryRun
-        if (takesFields && !o.fields && interactive) fields = await promptFields()
+        if (takesFields && !o.fields && interactive) {
+          const project = requireProject(process.cwd())
+          fields = await promptFields(discover(dirname(project.configPath)), null, 0)
+        }
         const result = await runGenerate(kind as GenerateKind, name, {
           globalShared: o.globalShared,
           force: o.force,
@@ -204,57 +220,155 @@ export function registerGenerate(program: Command): void {
     )
 }
 
-/** Asks for fields one at a time; an empty name finishes. Returns [] to use the default `title` field. */
-async function promptFields(): Promise<FieldSpec[]> {
-  const entries: string[] = []
-  const cancelled = (v: unknown): never | void => {
-    if (p.isCancel(v)) {
-      p.cancel('Cancelled.')
-      process.exit(1)
+interface PromptContext {
+  /** Collection slugs a relationship, upload or join can point at. */
+  collections: string[]
+  /** Slugs of blocks that exist in src/blocks. */
+  blocks: string[]
+}
+
+function discover(srcDir: string): PromptContext {
+  const collections = new Set(['users', 'media'])
+  for (const dir of ['collections', 'globals']) {
+    const full = join(srcDir, dir)
+    if (!existsSync(full)) continue
+    for (const f of readdirSync(full).filter((n) => /\.tsx?$/.test(n))) {
+      const m = /\bslug:\s*['"]([^'"]+)['"]/.exec(readFileSync(join(full, f), 'utf8'))
+      if (m && dir === 'collections') collections.add(m[1]!)
     }
   }
+  const blocksDir = join(srcDir, 'blocks')
+  const blocks = existsSync(blocksDir)
+    ? readdirSync(blocksDir)
+        .filter((n) => /\.tsx?$/.test(n))
+        .map((n) => toSlug(n.replace(/\.tsx?$/, '')))
+    : []
+  return { collections: [...collections].sort(), blocks }
+}
+
+const TYPE_HINTS: Partial<Record<FieldType, string>> = {
+  array: 'repeatable rows of fields',
+  blocks: 'pick from your block types',
+  collapsible: 'collapsible section (layout only)',
+  group: 'named group of fields',
+  join: 'reverse relationship, read-only',
+  point: 'geographic coordinates',
+  radio: 'choose one option',
+  row: 'fields side by side (layout only)',
+  tabs: 'tabs (layout only)',
+  ui: 'custom component, stores no data',
+}
+
+function bail(value: unknown): void {
+  if (p.isCancel(value)) {
+    p.cancel('Cancelled.')
+    process.exit(1)
+  }
+}
+
+/**
+ * Asks for fields one at a time (name, type, then whatever that type needs, then required);
+ * an empty name finishes. Container types recurse. Returns [] for "just the default title field".
+ */
+async function promptFields(ctx: PromptContext, scope: string | null, minimum: number): Promise<FieldSpec[]> {
+  const specs: FieldSpec[] = []
 
   for (;;) {
-    const name = await p.text({
-      message: entries.length
+    const message = scope
+      ? `Field name inside "${scope}" (leave empty when done)`
+      : specs.length
         ? 'Next field name (leave empty to finish)'
-        : 'Field name (leave empty for just a `title` field)',
-      placeholder: 'e.g. client',
-    })
-    cancelled(name)
-    if (!name || !String(name).trim()) break
-
-    const type = await p.select({
-      message: `Type of "${String(name)}"`,
-      options: FIELD_TYPES.map((t) => ({ value: t, label: t })),
-    })
-    cancelled(type)
-
-    let arg = ''
-    if (type === 'select') {
-      const options = await p.text({ message: 'Options, separated by |', placeholder: 'draft|published' })
-      cancelled(options)
-      arg = `:${String(options)}`
-    } else if (type === 'upload' || type === 'relationship') {
-      const target = await p.text({
-        message: 'Target collection slug',
-        placeholder: type === 'upload' ? 'media' : 'categories',
-        initialValue: type === 'upload' ? 'media' : '',
-      })
-      cancelled(target)
-      arg = `:${String(target)}`
+        : 'Field name (leave empty for just a `title` field)'
+    const rawName = await p.text({ message, placeholder: 'e.g. client' })
+    bail(rawName)
+    const name = String(rawName ?? '').trim()
+    if (!name) {
+      if (specs.length >= minimum) break
+      p.log.error(`Add at least ${minimum} field${minimum > 1 ? 's' : ''}.`)
+      continue
     }
 
-    const required = await p.confirm({ message: 'Required?', initialValue: false })
-    cancelled(required)
+    const type = (await p.select({
+      message: `Type of "${name}"`,
+      options: FIELD_TYPES.map((t) => ({ value: t, label: t, hint: TYPE_HINTS[t] })),
+    })) as FieldType
+    bail(type)
 
-    const entry = `${String(name).trim()}:${String(type)}${arg}${required ? '!' : ''}`
+    const spec: FieldSpec = { name, type, required: false }
+    let skip = false
+
+    if (type === 'select' || type === 'radio') {
+      const options = await p.text({ message: 'Options, separated by |', placeholder: 'draft|published' })
+      bail(options)
+      spec.options = String(options).split('|').map((o) => o.trim()).filter(Boolean)
+    } else if (type === 'upload' || type === 'relationship') {
+      if (!ctx.collections.length) {
+        p.log.error('No collections to point at yet.')
+        skip = true
+      } else {
+        const target = await p.select({
+          message: 'Target collection',
+          options: ctx.collections.map((c) => ({ value: c, label: c })),
+          initialValue: type === 'upload' && ctx.collections.includes('media') ? 'media' : undefined,
+        })
+        bail(target)
+        spec.relationTo = String(target)
+      }
+    } else if (type === 'join') {
+      const collection = await p.select({
+        message: 'Collection that holds the relationship',
+        options: ctx.collections.map((c) => ({ value: c, label: c })),
+      })
+      bail(collection)
+      const on = await p.text({ message: `Field in "${String(collection)}" that points back here`, placeholder: 'category' })
+      bail(on)
+      spec.join = { collection: String(collection), on: String(on).trim() }
+    } else if (type === 'blocks') {
+      if (!ctx.blocks.length) {
+        p.log.error('No blocks yet. Run `paycms generate block <name>` first.')
+        skip = true
+      } else {
+        const picked = await p.multiselect({
+          message: 'Allowed blocks',
+          options: ctx.blocks.map((b) => ({ value: b, label: b })),
+          required: true,
+        })
+        bail(picked)
+        spec.blocks = picked as string[]
+      }
+    } else if (type === 'array' || type === 'group' || type === 'row' || type === 'collapsible') {
+      spec.fields = await promptFields(ctx, name, 1)
+    } else if (type === 'tabs') {
+      spec.tabs = []
+      for (;;) {
+        const label = await p.text({
+          message: `Tab label in "${name}" (leave empty when done)`,
+          placeholder: 'e.g. Content',
+        })
+        bail(label)
+        const text = String(label ?? '').trim()
+        if (!text) {
+          if (spec.tabs.length) break
+          p.log.error('Add at least one tab.')
+          continue
+        }
+        spec.tabs.push({ label: text, fields: await promptFields(ctx, text, 1) })
+      }
+    }
+
+    if (skip) continue
+    if (supportsRequired(type)) {
+      const required = await p.confirm({ message: 'Required?', initialValue: false })
+      bail(required)
+      spec.required = Boolean(required)
+    }
+
     try {
-      parseFieldSpecs([...entries, entry].join(','))
-      entries.push(entry)
+      validateSpecs([...specs, spec])
+      specs.push(spec)
     } catch (err) {
       p.log.error(err instanceof CliError ? err.message : String(err))
     }
   }
-  return parseFieldSpecs(entries.join(','))
+  return specs
 }

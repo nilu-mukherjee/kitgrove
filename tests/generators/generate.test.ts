@@ -141,6 +141,45 @@ describe('generate with fields', () => {
   })
 })
 
+describe('generate with container fields', () => {
+  it('imports referenced blocks and renders nested fields', async () => {
+    const root = await project()
+    await runGenerate('block', 'Hero', { cwd: root })
+    await runGenerate('block', 'Call Out', { cwd: root })
+    await runGenerate('collection', 'landing', {
+      cwd: root,
+      fields: parseFieldSpecs('title:text!,links:array(label:text!,url:text!),layout:blocks(hero,call-out)'),
+    })
+    const file = read(root, 'src/collections/Landing.ts')
+    expect(file).toContain(`import { Hero } from '../blocks/Hero'`)
+    expect(file).toContain(`import { CallOut } from '../blocks/CallOut'`)
+    expect(file).toContain('blocks: [Hero, CallOut]')
+    expect(file).toMatch(/name: 'label'/)
+  })
+
+  it('rejects a block that does not exist and writes nothing', async () => {
+    const root = await project()
+    await expect(
+      runGenerate('collection', 'landing', { cwd: root, fields: parseFieldSpecs('layout:blocks(nope)') }),
+    ).rejects.toThrow(/block "nope".*generate it first \(paycms generate block nope\)/)
+    expect(existsSync(join(root, 'src/collections/Landing.ts'))).toBe(false)
+  })
+
+  it('rejects a join to a collection that does not exist', async () => {
+    const root = await project()
+    await expect(
+      runGenerate('collection', 'cats', { cwd: root, fields: parseFieldSpecs('posts:join:posts-x.cat') }),
+    ).rejects.toThrow(/"posts-x".*generate it first/)
+  })
+
+  it('uses a sibling import path for blocks nested in blocks', async () => {
+    const root = await project()
+    await runGenerate('block', 'Hero', { cwd: root })
+    await runGenerate('block', 'Section', { cwd: root, fields: parseFieldSpecs('items:blocks(hero)') })
+    expect(read(root, 'src/blocks/Section.ts')).toContain(`import { Hero } from './Hero'`)
+  })
+})
+
 describe('generate global', () => {
   it('creates a per-tenant global by default', async () => {
     const root = await project()

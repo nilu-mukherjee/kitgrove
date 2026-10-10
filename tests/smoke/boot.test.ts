@@ -33,8 +33,28 @@ beforeAll(() => {
     stdio: 'inherit',
   })
   root = join(cwd, 'site')
-  const g = spawnSync('node', [bin, 'generate', 'collection', 'Notes'], { cwd: root, env, encoding: 'utf8' })
-  if (g.status !== 0) throw new Error(g.stderr)
+  const gen = (args: string[], allowFailure = false) => {
+    const g = spawnSync('node', [bin, 'generate', ...args], { cwd: root, env, encoding: 'utf8' })
+    if (g.status !== 0 && !allowFailure) throw new Error(`generate ${args.join(' ')}: ${g.stderr}`)
+  }
+  gen(['collection', 'Notes'])
+  gen(['block', 'Banner', '--fields', 'heading:text!,subheading:textarea'])
+  gen([
+    'collection',
+    'Kitchen Sink',
+    '--fields',
+    [
+      'title:text!,body:richText,count:number,flag:checkbox,when:date,mail:email,data:json,snippet:code',
+      'where:point,size:radio:s|m|l,status:select:draft|live!,author:relationship:users,cover:upload:media',
+      'links:array(label:text!,url:text!)!,seo:group(metaTitle:text),meta:row(a:text,b:text)',
+      'more:collapsible(note:textarea),layout:tabs(Content(heading:text),Extra(note2:text))',
+      'content:blocks(banner),widget:ui',
+    ].join(','),
+  ])
+  // A join must live on the referenced collection: books -> authors, then re-generate authors with the join.
+  gen(['collection', 'Authors', '--fields', 'name:text!'])
+  gen(['collection', 'Books', '--fields', 'name:text!,author:relationship:authors'])
+  gen(['collection', 'Authors', '--force', '--fields', 'name:text!,books:join:books.author'], true)
 })
 
 describe(`generated ${template}/${db} project`, () => {

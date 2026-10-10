@@ -22,6 +22,21 @@ export function toSlug(input: string): string {
   return slug
 }
 
+/** `case-studies` → `CaseStudies`. */
+export function toPascal(slug: string): string {
+  return slug
+    .split('-')
+    .filter(Boolean)
+    .map((w) => w[0]!.toUpperCase() + w.slice(1))
+    .join('')
+}
+
+/** `case-studies` → `caseStudies`. */
+export function toCamel(slug: string): string {
+  const p = toPascal(slug)
+  return p[0]!.toLowerCase() + p.slice(1)
+}
+
 function lookup(vars: TemplateVars, key: string): string | boolean {
   if (!Object.hasOwn(vars, key)) throw new CliError(`Template variable "${key}" is not defined.`)
   return vars[key] as string | boolean

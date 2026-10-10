@@ -29,19 +29,35 @@ Requires Node 20.12 or newer.
 | `paycms migrate [args…]` | `payload migrate`, e.g. `paycms migrate create add-notes`. |
 | `paycms doctor` | Diagnose the current project. |
 
-### Field specs
+### Fields
 
-`--fields` takes a comma-separated list of `name:type[:arg][!]`; a trailing `!` makes the field required.
+In a terminal, `generate collection|global|block` asks for each field: **name**, **type** (the full Payload
+list), whatever that type needs (options, target collection, nested fields…), and **required or not**.
+Leave the name empty to finish; with no fields you get a single `title` field. Container types
+(array, group, row, collapsible, tabs) ask for their inner fields the same way.
+
+For scripts and CI, pass the same thing with `--fields` (or `--yes` to skip prompts entirely):
 
 ```bash
-paycms generate collection "Case Studies" \
-  --fields "client:text!,summary:textarea,image:upload:media,status:select:draft|live,author:relationship:users"
+paycms generate collection "Case Studies" --fields \
+  "client:text!,status:select:draft|live,cover:upload:media,links:array(label:text!,url:text!)"
 ```
 
-Types: `text`, `textarea`, `richText`, `number`, `checkbox`, `date`, `email`, `select` (`:a|b|c`),
-`upload` and `relationship` (`:<collection slug>`, which must already exist). Without fields you get a
-single `title` field. The admin title is `title` if present, otherwise the first text or email field.
-Arrays and `hasMany` are not generated; add them by editing the file.
+Syntax: comma-separated `name:type[:arg][(children)][!]`, where `!` marks the field required.
+
+| Type | Argument / children |
+|---|---|
+| `text` `textarea` `richText` `number` `checkbox` `date` `email` `json` `code` `point` | none |
+| `select` `radio` | `:a\|b\|c` options |
+| `upload` `relationship` | `:<collection>` which must already exist |
+| `join` | `:<collection>.<field>`, e.g. `posts.category` |
+| `array` `group` `row` `collapsible` | `(child:type,…)` nested fields |
+| `tabs` | `(Label(child:type,…),Other(…))` |
+| `blocks` | `(hero,callout)` names of blocks that already exist (they are imported for you) |
+| `ui` | none; add `admin.components` yourself |
+
+`group`, `row`, `collapsible`, `tabs`, `join` and `ui` have no `required` option. The admin title is
+`title` if present, otherwise the first top-level text or email field, otherwise `id`.
 
 Generators never overwrite an existing file without `--force`. If `payload.config.ts` is shaped in a way
 that cannot be edited safely (for example `collections` is a variable), the file is still created, the
